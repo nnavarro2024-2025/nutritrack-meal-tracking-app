@@ -2,10 +2,9 @@ import { FormEvent, ReactNode, useEffect, useState } from "react"
 import {
   initialMeals,
   Meal,
-  mockDelay,
   todaySummary,
-  weeklyActivity,
 } from "./data/mockData"
+import { fetchDailyWearableData, fetchWeeklyWearableData, WearableDailyData } from "./services/wearableService"
 
 type Tab = "home" | "log" | "history" | "wearable"
 type ViewState = "ready" | "loading" | "empty" | "error"
@@ -65,8 +64,40 @@ function ProgressRing({ value, goal, color, label }: { value: number; goal: numb
 }
 
 function Dashboard({ goToLog }: { goToLog: () => void }) {
-  const [state, setState] = useState<ViewState>("ready")
-  if (state !== "ready") return <Screen title="Today" action={<StatePicker value={state} onChange={setState} />}><StatusState type={state} onRetry={() => setState("ready")} /></Screen>
+  const [state, setState] = useState<ViewState>("loading")
+  const [wearableData, setWearableData] = useState<WearableDailyData | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
+  useEffect(() => {
+    let active = true
+    setState("loading")
+    fetchDailyWearableData()
+      .then((data) => {
+        if (active) {
+          setWearableData(data)
+          setState("ready")
+        }
+      })
+      .catch(() => {
+        if (active) setState("error")
+      })
+    return () => { active = false }
+  }, [refreshKey])
+  const retry = () => {
+    setState("loading")
+    setRefreshKey((key) => key + 1)
+  }
+  if (!wearableData) {
+    const unavailableState = state === "ready" ? "error" : state
+    const updateState = (nextState: ViewState) => {
+      if (nextState === "ready") {
+        retry()
+      } else {
+        setState(nextState)
+      }
+    }
+    return <Screen title="Today" action={<StatePicker value={state} onChange={updateState} />}><StatusState type={unavailableState} onRetry={retry} /></Screen>
+  }
+  if (state !== "ready") return <Screen title="Today" action={<StatePicker value={state} onChange={setState} />}><StatusState type={state} onRetry={retry} /></Screen>
   const calPct = Math.round((todaySummary.calories.current / todaySummary.calories.goal) * 100)
   return (
     <Screen title="Good morning, Alex" eyebrow="Sunday, May 18" action={<StatePicker value={state} onChange={setState} />}>
@@ -79,8 +110,8 @@ function Dashboard({ goToLog }: { goToLog: () => void }) {
         <div className="rings">{todaySummary.macros.map((m) => <ProgressRing key={m.label} {...m} />)}</div>
       </section>
       <div className="metric-grid">
-        <section className="metric-card"><div className="metric-icon mint"><Icon name="steps" /></div><span>Steps</span><strong>{todaySummary.steps.toLocaleString()}</strong><small>of {todaySummary.stepGoal.toLocaleString()}</small><div className="progress"><i style={{ width: `${todaySummary.steps / 100}%` }} /></div></section>
-        <section className="metric-card"><div className="metric-icon peach"><Icon name="flame" /></div><span>Active energy</span><strong>{todaySummary.activeEnergy}</strong><small>kcal burned</small><div className="progress peach-bar"><i style={{ width: "68%" }} /></div></section>
+        <section className="metric-card"><div className="metric-icon mint"><Icon name="steps" /></div><span>Steps</span><strong>{wearableData.steps.toLocaleString()}</strong><small>of {todaySummary.stepGoal.toLocaleString()}</small><div className="progress"><i style={{ width: `${Math.min(100, wearableData.steps / 100)}%` }} /></div></section>
+        <section className="metric-card"><div className="metric-icon peach"><Icon name="flame" /></div><span>Active energy</span><strong>{wearableData.activeEnergyKcal}</strong><small>kcal burned</small><div className="progress peach-bar"><i style={{ width: `${Math.min(100, Math.round((wearableData.activeEnergyKcal / 900) * 100))}%` }} /></div></section>
       </div>
       <button className="primary-button quick-add" onClick={goToLog}><Icon name="plus" /> Log a meal</button>
     </Screen>
@@ -146,26 +177,62 @@ function History({ meals }: { meals: Meal[] }) {
 }
 
 function Wearable() {
-  const [state, setState] = useState<ViewState>("ready")
+  const [state, setState] = useState<ViewState>("loading")
   const [connected, setConnected] = useState(false)
   const [syncing, setSyncing] = useState(false)
-  const connect = async () => { setSyncing(true); await mockDelay(); setConnected(true); setSyncing(false) }
+  const [lastSynced, setLastSynced] = useState<string | null>(null)
+  const [weeklyData, setWeeklyData] = useState<WearableDailyData[]>([])
+  const loadWeek = async () => {
+    setState("loading")
+    try {
+      setWeeklyData(await fetchWeeklyWearableData())
+      setState("ready")
+    } catch {
+      setState("error")
+    }
+  }
+  useEffect(() => { void loadWeek() }, [])
+  const connect = async () => {
+    setSyncing(true)
+    try {
+      const [today, week] = await Promise.all([
+        fetchDailyWearableData(),
+        fetchWeeklyWearableData(),
+      ])
+      setWeeklyData(week)
+      setLastSynced(today.lastSynced)
+      setConnected(true)
+      setState("ready")
+    } catch {
+      setState("error")
+    } finally {
+      setSyncing(false)
+    }
+  }
+  const totalSteps = weeklyData.reduce((total, day) => total + day.steps, 0)
+  const averageSteps = weeklyData.length ? Math.round(totalSteps / weeklyData.length) : 0
+  const averageEnergy = weeklyData.length
+    ? Math.round(weeklyData.reduce((total, day) => total + day.activeEnergyKcal, 0) / weeklyData.length)
+    : 0
   return (
     <Screen title="Wearable sync" eyebrow="Activity, all in one place" action={<StatePicker value={state} onChange={setState} />}>
-      {state !== "ready" ? <StatusState type={state} onRetry={() => setState("ready")} /> : <>
+      {state !== "ready" ? <StatusState type={state} onRetry={() => { void loadWeek() }} /> : <>
         <section className={`device-card ${connected ? "connected" : ""}`}>
           <div className="watch-visual"><Icon name="watch" size={34} /></div>
-          <div><span className="section-kicker">{connected ? "CONNECTED" : "NO DEVICE CONNECTED"}</span><h2>{connected ? "Apple Watch" : "Connect your wearable"}</h2><p>{connected ? "Last synced just now" : "Bring your steps and workouts into NutriTrack."}</p></div>
-          <button className={connected ? "secondary-button" : "primary-button"} onClick={connect} disabled={syncing}>{syncing ? "Connecting…" : connected ? "Sync now" : "Connect device"}</button>
+          <div><span className="section-kicker">{connected ? "CONNECTED" : "NO DEVICE CONNECTED"}</span><h2>{connected ? "Apple Watch" : "Connect your wearable"}</h2><p>{connected && lastSynced ? `Last synced ${new Date(lastSynced).toLocaleString()}` : "Bring your steps and workouts into NutriTrack."}</p></div>
+          <button className={connected ? "secondary-button" : "primary-button"} onClick={() => { void connect() }} disabled={syncing}>{syncing ? "Connecting…" : connected ? "Sync now" : "Connect device"}</button>
         </section>
         <section className="card chart-card">
-          <div className="section-heading"><div><span className="section-kicker">LAST 7 DAYS</span><h2>Daily movement</h2></div><span className="chart-total">57.5k <small>steps</small></span></div>
+          <div className="section-heading"><div><span className="section-kicker">LAST 7 DAYS</span><h2>Daily movement</h2></div><span className="chart-total">{(totalSteps / 1000).toFixed(1)}k <small>steps</small></span></div>
           <div className="legend"><span><i className="green-dot" /> Steps</span><span><i className="orange-dot" /> Active kcal</span></div>
           <div className="chart">
-            {weeklyActivity.map((d, i) => <div className="bar-group" key={i}><div className="bars"><i className="energy-bar" style={{ height: `${d.energy / 8}%` }} /><i className="steps-bar" style={{ height: `${d.steps / 125}%` }} /></div><span>{d.day}</span></div>)}
+            {weeklyData.map((day) => {
+              const label = new Date(`${day.date}T00:00:00`).toLocaleDateString(undefined, { weekday: "short" })
+              return <div className="bar-group" key={day.date}><div className="bars"><i className="energy-bar" style={{ height: `${Math.min(100, day.activeEnergyKcal / 9)}%` }} /><i className="steps-bar" style={{ height: `${Math.min(100, day.steps / 140)}%` }} /></div><span>{label}</span></div>
+            })}
           </div>
         </section>
-        <div className="metric-grid"><section className="metric-card compact"><span>Daily average</span><strong>8,221</strong><small>steps per day</small></section><section className="metric-card compact"><span>Active energy</span><strong>522</strong><small>avg kcal / day</small></section></div>
+        <div className="metric-grid"><section className="metric-card compact"><span>Daily average</span><strong>{averageSteps.toLocaleString()}</strong><small>steps per day</small></section><section className="metric-card compact"><span>Active energy</span><strong>{averageEnergy}</strong><small>avg kcal / day</small></section></div>
       </>}
     </Screen>
   )

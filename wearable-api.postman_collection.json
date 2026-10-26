@@ -1,0 +1,71 @@
+{
+  "info": {
+    "_postman_id": "6bbaccc7-0e5e-41fc-973f-2c2f60ec7f54",
+    "name": "NutriTrack Wearable API",
+    "description": "Example requests and responses for the mock wearable REST API.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Get daily wearable data",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/wearable/daily?date=2026-10-26",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "wearable", "daily"],
+          "query": [{ "key": "date", "value": "2026-10-26" }]
+        }
+      },
+      "response": [
+        {
+          "name": "Daily data example",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/wearable/daily?date=2026-10-26"
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+          "body": "{\n  \"date\": \"2026-10-26\",\n  \"steps\": 10120,\n  \"activeEnergyKcal\": 257,\n  \"distanceKm\": 8,\n  \"lastSynced\": \"2026-10-26T04:32:08.533Z\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Get last 7 days of wearable data",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/wearable/week",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "wearable", "week"]
+        }
+      },
+      "response": [
+        {
+          "name": "Weekly data example",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/wearable/week"
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+          "body": "[\n  { \"date\": \"2026-10-20\", \"steps\": 3904, \"activeEnergyKcal\": 813, \"distanceKm\": 2.94, \"lastSynced\": \"2026-10-26T04:32:08.533Z\" },\n  { \"date\": \"2026-10-21\", \"steps\": 6779, \"activeEnergyKcal\": 262, \"distanceKm\": 4.66, \"lastSynced\": \"2026-10-26T04:32:08.533Z\" },\n  { \"date\": \"2026-10-22\", \"steps\": 9968, \"activeEnergyKcal\": 743, \"distanceKm\": 7.31, \"lastSynced\": \"2026-10-26T04:32:08.533Z\" },\n  { \"date\": \"2026-10-23\", \"steps\": 7408, \"activeEnergyKcal\": 875, \"distanceKm\": 5.73, \"lastSynced\": \"2026-10-26T04:32:08.533Z\" },\n  { \"date\": \"2026-10-24\", \"steps\": 8516, \"activeEnergyKcal\": 628, \"distanceKm\": 6.37, \"lastSynced\": \"2026-10-26T04:32:08.533Z\" },\n  { \"date\": \"2026-10-25\", \"steps\": 7861, \"activeEnergyKcal\": 459, \"distanceKm\": 6.17, \"lastSynced\": \"2026-10-26T04:32:08.533Z\" },\n  { \"date\": \"2026-10-26\", \"steps\": 10120, \"activeEnergyKcal\": 257, \"distanceKm\": 8, \"lastSynced\": \"2026-10-26T04:32:08.533Z\" }\n]"
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001"
+    }
+  ]
+}

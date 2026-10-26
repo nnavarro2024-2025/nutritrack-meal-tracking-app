@@ -18,9 +18,7 @@ export const todaySummary = {
     { label: "Carbs", value: 168, goal: 240, color: "#e5a83b" },
     { label: "Fat", value: 48, goal: 70, color: "#e87567" },
   ],
-  steps: 7248,
   stepGoal: 10000,
-  activeEnergy: 486,
 }
 
 export const initialMeals: Meal[] = [
@@ -63,16 +61,6 @@ export const initialMeals: Meal[] = [
     image:
       "https://images.unsplash.com/photo-1605487821615-9dee8d69932e?auto=format&fit=crop&w=300&q=80",
   },
-]
-
-export const weeklyActivity = [
-  { day: "M", steps: 6200, energy: 390 },
-  { day: "T", steps: 8400, energy: 510 },
-  { day: "W", steps: 7100, energy: 460 },
-  { day: "T", steps: 9800, energy: 620 },
-  { day: "F", steps: 7600, energy: 480 },
-  { day: "S", steps: 11200, energy: 710 },
-  { day: "S", steps: 7248, energy: 486 },
 ]
 
 export const mockDelay = (ms = 450) =>
