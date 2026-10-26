@@ -2,13 +2,19 @@ import cors from "cors"
 import express from "express"
 import Ajv from "ajv"
 import addFormats from "ajv-formats"
+import mongoose from "mongoose"
 import { readFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import dotenv from "dotenv"
+import authRoutes from "./routes/auth.js"
+import { authenticateToken, requireRole } from "./middleware/auth.js"
 
+const backendDirectory = dirname(fileURLToPath(import.meta.url))
+dotenv.config({ path: resolve(backendDirectory, ".env") })
 const app = express()
 const port = Number(process.env.PORT || 3001)
-const schemaDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "../schemas")
+const schemaDirectory = resolve(backendDirectory, "../schemas")
 const loadSchema = (filename) => JSON.parse(readFileSync(resolve(schemaDirectory, filename), "utf8"))
 const terminologySchema = loadSchema("terminology.json")
 const terminology = terminologySchema.definitions
@@ -56,6 +62,7 @@ app.use(cors({
   },
 }))
 app.use(express.json())
+app.use("/api/auth", authRoutes)
 
 function formatValidationErrors(errors = []) {
   return errors.map((error) => {
@@ -82,7 +89,7 @@ app.get("/api/terminology", (_request, response) => {
   })
 })
 
-app.post("/api/notes/validate", (request, response) => {
+app.post("/api/notes/validate", authenticateToken, requireRole("dietitian"), (request, response) => {
   if (!validateClinicalNote(request.body)) {
     response.status(400).json({
       valid: false,
@@ -187,6 +194,26 @@ app.use((error, _request, response, _next) => {
   response.status(500).json({ error: "Internal server error." })
 })
 
-app.listen(port, () => {
-  console.log(`Wearable API listening on http://localhost:${port}`)
+async function startServer() {
+  if (!process.env.MONGODB_URI) {
+    throw new Error("MONGODB_URI is missing. Set it in backend/.env (see backend/.env.example).")
+  }
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+    throw new Error("JWT_SECRET is missing or too short. Set a secret with at least 32 characters in backend/.env.")
+  }
+
+  try {
+    await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 })
+  } catch (error) {
+    throw new Error(`Could not connect to MongoDB configured by MONGODB_URI: ${error.message}`)
+  }
+
+  app.listen(port, () => {
+    console.log(`NutriTrack API listening on http://localhost:${port}`)
+  })
+}
+
+startServer().catch((error) => {
+  console.error(`Backend startup failed: ${error.message}`)
+  process.exitCode = 1
 })

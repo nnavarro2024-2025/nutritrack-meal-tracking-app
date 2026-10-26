@@ -4,12 +4,18 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "seed": "node seed.js",
+    "test:auth": "node --test tests/auth.integration.test.js"
   },
   "dependencies": {
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
-    "express": "^5.1.0"
+    "dotenv": "^18.0.9",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.11.4"
   }
 }

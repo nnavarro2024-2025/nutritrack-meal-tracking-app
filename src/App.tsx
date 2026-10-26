@@ -6,8 +6,18 @@ import {
 } from "./data/mockData"
 import Charting from "./components/Charting"
 import { fetchDailyWearableData, fetchWeeklyWearableData, WearableDailyData } from "./services/wearableService"
+import {
+  AuthApiError,
+  AuthUser,
+  UserRole,
+  clearAuthToken,
+  fetchCurrentUser,
+  getAuthToken,
+  login as loginUser,
+  register as registerUser,
+} from "./services/authService"
 
-type Tab = "home" | "log" | "history" | "wearable" | "charting"
+type Tab = "home" | "log" | "history" | "wearable" | "patients" | "charting"
 type ViewState = "ready" | "loading" | "empty" | "error"
 
 const Icon = ({ name, size = 22 }: { name: string; size?: number }) => {
@@ -244,20 +254,70 @@ function Screen({ title, eyebrow, action, children }: { title: string; eyebrow?:
   return <main className="screen"><header className="page-header"><div>{eyebrow && <span className="eyebrow">{eyebrow}</span>}<h1>{title}</h1></div>{action}</header>{children}</main>
 }
 
-function Auth({ onDone }: { onDone: () => void }) {
+function Auth({
+  onDone,
+  onDemo,
+  initialMessage,
+}: {
+  onDone: (user: AuthUser) => void
+  onDemo: (role: UserRole) => Promise<AuthUser>
+  initialMessage: string
+}) {
   const [register, setRegister] = useState(false)
-  const [values, setValues] = useState({ name: "", email: "", password: "" })
+  const [values, setValues] = useState({ name: "", email: "", password: "", role: "consumer" as UserRole })
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [message, setMessage] = useState(initialMessage)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => setMessage(initialMessage), [initialMessage])
   const submit = (e: FormEvent) => {
     e.preventDefault()
     const next: Record<string, string> = {}
     if (register && values.name.trim().length < 2) next.name = "Please enter your name"
     if (!/^\S+@\S+\.\S+$/.test(values.email)) next.email = "Enter a valid email address"
-    if (values.password.length < 6) next.password = "Use at least 6 characters"
+    if (register && values.password.length < 8) next.password = "Use at least 8 characters"
+    if (!register && !values.password) next.password = "Enter your password"
     setErrors(next)
-    if (!Object.keys(next).length) onDone()
+    setMessage("")
+    if (Object.keys(next).length) return
+    setBusy(true)
+    const task = register
+      ? registerUser({ name: values.name.trim(), email: values.email.trim(), password: values.password, role: values.role })
+      : loginUser(values.email.trim(), values.password)
+    void task.then(onDone).catch((error: unknown) => {
+      setMessage(error instanceof Error ? error.message : "Could not sign in. Please try again.")
+    }).finally(() => setBusy(false))
   }
-  return <div className="auth-shell"><section className="auth-brand"><div className="brand-mark"><Icon name="heart" /></div><div className="logo">NutriTrack</div><h1>Healthy habits,<br />made simple.</h1><p>Track meals, understand your energy, and make progress one day at a time.</p><div className="auth-quote">“Small choices add up to lasting change.”</div></section><section className="auth-panel"><div className="mobile-logo"><div className="brand-mark"><Icon name="heart" /></div><div className="logo">NutriTrack</div></div><div className="auth-form-wrap"><span className="eyebrow">WELCOME TO NUTRITRACK</span><h2>{register ? "Create your account" : "Welcome back"}</h2><p>{register ? "Start building healthier habits today." : "Sign in to continue your journey."}</p><form onSubmit={submit} noValidate>{register && <TextAuth label="Full name" name="name" value={values.name} error={errors.name} onChange={(v) => setValues({ ...values, name: v })} />}<TextAuth label="Email address" name="email" value={values.email} error={errors.email} onChange={(v) => setValues({ ...values, email: v })} /><TextAuth label="Password" name="password" type="password" value={values.password} error={errors.password} onChange={(v) => setValues({ ...values, password: v })} /><button className="primary-button auth-button">{register ? "Create account" : "Sign in"} <Icon name="arrow" /></button></form><p className="auth-switch">{register ? "Already have an account?" : "New to NutriTrack?"} <button onClick={() => { setRegister(!register); setErrors({}) }}>{register ? "Sign in" : "Create an account"}</button></p><button className="demo-link" onClick={onDone}>Continue with demo data</button></div></section></div>
+  const continueDemo = (role: UserRole) => {
+    setMessage("")
+    setBusy(true)
+    void onDemo(role).then(onDone).catch((error: unknown) => {
+      setMessage(error instanceof Error ? error.message : "Could not sign in to the demo account.")
+    }).finally(() => setBusy(false))
+  }
+  return (
+    <div className="auth-shell">
+      <section className="auth-brand"><div className="brand-mark"><Icon name="heart" /></div><div className="logo">NutriTrack</div><h1>Healthy habits,<br />made simple.</h1><p>Track meals, understand your energy, and make progress one day at a time.</p><div className="auth-quote">“Small choices add up to lasting change.”</div></section>
+      <section className="auth-panel">
+        <div className="mobile-logo"><div className="brand-mark"><Icon name="heart" /></div><div className="logo">NutriTrack</div></div>
+        <div className="auth-form-wrap">
+          <span className="eyebrow">WELCOME TO NUTRITRACK</span><h2>{register ? "Create your account" : "Welcome back"}</h2>
+          <p>{register ? "Start building healthier habits today." : "Sign in to continue your journey."}</p>
+          {message && <div className="auth-message" role="alert">{message}</div>}
+          <form onSubmit={submit} noValidate>
+            {register && <>
+              <TextAuth label="Full name" name="name" value={values.name} error={errors.name} onChange={(value) => setValues({ ...values, name: value })} />
+              <div className="field"><label htmlFor="account-role">Account type</label><select id="account-role" value={values.role} onChange={(event) => setValues({ ...values, role: event.target.value as UserRole })}><option value="consumer">Consumer</option><option value="dietitian">Dietitian</option></select></div>
+            </>}
+            <TextAuth label="Email address" name="email" value={values.email} error={errors.email} onChange={(value) => setValues({ ...values, email: value })} />
+            <TextAuth label="Password" name="password" type="password" value={values.password} error={errors.password} onChange={(value) => setValues({ ...values, password: value })} />
+            <button className="primary-button auth-button" disabled={busy}>{busy ? "Please wait…" : register ? "Create account" : "Sign in"} <Icon name="arrow" /></button>
+          </form>
+          <p className="auth-switch">{register ? "Already have an account?" : "New to NutriTrack?"} <button onClick={() => { setRegister(!register); setErrors({}); setMessage("") }}>{register ? "Sign in" : "Create an account"}</button></p>
+          <div className="demo-actions"><span>Or try a seeded demo account</span><button className="demo-link" disabled={busy} onClick={() => continueDemo("consumer")}>Continue as consumer</button><button className="demo-link" disabled={busy} onClick={() => continueDemo("dietitian")}>Continue as dietitian</button></div>
+        </div>
+      </section>
+    </div>
+  )
 }
 
 function TextAuth({ label, name, value, onChange, error, type = "text" }: { label: string; name: string; value: string; onChange: (v: string) => void; error?: string; type?: string }) {
@@ -265,11 +325,89 @@ function TextAuth({ label, name, value, onChange, error, type = "text" }: { labe
 }
 
 export default function App() {
-  const [authenticated, setAuthenticated] = useState(false)
+  const [user, setUser] = useState<AuthUser | null>(null)
+  const [restoringSession, setRestoringSession] = useState(() => Boolean(getAuthToken()))
+  const [authMessage, setAuthMessage] = useState("")
   const [tab, setTab] = useState<Tab>("home")
   const [meals, setMeals] = useState(initialMeals)
   useEffect(() => { window.scrollTo(0, 0) }, [tab])
-  if (!authenticated) return <Auth onDone={() => setAuthenticated(true)} />
-  const tabs: { id: Tab; label: string; icon: string }[] = [{ id: "home", label: "Today", icon: "home" }, { id: "log", label: "Log meal", icon: "plus" }, { id: "history", label: "History", icon: "list" }, { id: "wearable", label: "Wearable", icon: "watch" }, { id: "charting", label: "Charting", icon: "chart" }]
-  return <div className="app-shell"><aside className="sidebar"><div className="sidebar-logo"><div className="brand-mark"><Icon name="heart" /></div><span>NutriTrack</span></div><nav>{tabs.map((item) => <button key={item.id} className={tab === item.id ? "active" : ""} onClick={() => setTab(item.id)}><Icon name={item.icon} /><span>{item.label}</span></button>)}</nav><div className="profile"><div className="avatar"><Icon name="user" /></div><div><strong>Alex Morgan</strong><span>Free plan</span></div></div></aside><div className="main-area">{tab === "home" && <Dashboard goToLog={() => setTab("log")} />}{tab === "log" && <MealLog onSave={(meal) => { setMeals([meal, ...meals]); setTab("history") }} />}{tab === "history" && <History meals={meals} />}{tab === "wearable" && <Wearable />}{tab === "charting" && <Charting />}</div><nav className="bottom-nav">{tabs.map((item) => <button key={item.id} className={tab === item.id ? "active" : ""} onClick={() => setTab(item.id)}><Icon name={item.icon} /><span>{item.label}</span></button>)}</nav></div>
+  useEffect(() => {
+    let active = true
+    const handleSessionExpired = (event: Event) => {
+      const detail = (event as CustomEvent<{ code?: string }>).detail
+      setUser(null)
+      setTab("home")
+      setAuthMessage(detail?.code === "TOKEN_EXPIRED"
+        ? "Your session expired. Please log in again."
+        : "Your session is no longer valid. Please log in again.")
+    }
+    window.addEventListener("nutritrack:session-expired", handleSessionExpired)
+    if (getAuthToken()) {
+      void fetchCurrentUser().then((currentUser) => {
+        if (!active) return
+        setUser(currentUser)
+        setTab(currentUser.role === "dietitian" ? "patients" : "home")
+      }).catch((error: unknown) => {
+        if (!active) return
+        clearAuthToken()
+        setAuthMessage(error instanceof AuthApiError && error.code === "TOKEN_EXPIRED"
+          ? "Your session expired. Please log in again."
+          : "We could not verify your session. Please log in again.")
+      }).finally(() => {
+        if (active) setRestoringSession(false)
+      })
+    } else {
+      setRestoringSession(false)
+    }
+    return () => {
+      active = false
+      window.removeEventListener("nutritrack:session-expired", handleSessionExpired)
+    }
+  }, [])
+
+  const completeLogin = (authenticatedUser: AuthUser) => {
+    setUser(authenticatedUser)
+    setAuthMessage("")
+    setTab(authenticatedUser.role === "dietitian" ? "patients" : "home")
+  }
+  const demoLogin = (role: UserRole) => role === "consumer"
+    ? loginUser("alex@nutritrack.demo", "ConsumerDemo2026!")
+    : loginUser("dietitian@nutritrack.demo", "DietitianDemo2026!")
+  const logout = () => {
+    clearAuthToken()
+    setUser(null)
+    setTab("home")
+    setAuthMessage("You have been logged out.")
+  }
+
+  if (restoringSession) return <div className="auth-shell"><section className="auth-panel"><div className="auth-form-wrap">Checking your NutriTrack session…</div></section></div>
+  if (!user) return <Auth onDone={completeLogin} onDemo={demoLogin} initialMessage={authMessage} />
+  const isDietitian = user.role === "dietitian"
+  const tabs: { id: Tab; label: string; icon: string }[] = isDietitian
+    ? [{ id: "patients", label: "Patients", icon: "user" }, { id: "charting", label: "Charting", icon: "chart" }]
+    : [{ id: "home", label: "Today", icon: "home" }, { id: "log", label: "Log meal", icon: "plus" }, { id: "history", label: "History", icon: "list" }, { id: "wearable", label: "Wearable", icon: "watch" }]
+  const navigate = (nextTab: Tab) => {
+    if (!isDietitian && (nextTab === "charting" || nextTab === "patients")) return
+    if (isDietitian && nextTab !== "charting" && nextTab !== "patients") return
+    setTab(nextTab)
+  }
+  const currentTab = !isDietitian && (tab === "charting" || tab === "patients") ? "home" : tab
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="sidebar-logo"><div className="brand-mark"><Icon name="heart" /></div><span>NutriTrack</span></div>
+        <nav>{tabs.map((item) => <button key={item.id} className={currentTab === item.id ? "active" : ""} onClick={() => navigate(item.id)}><Icon name={item.icon} /><span>{item.label}</span></button>)}</nav>
+        <div className="profile"><div className="avatar"><Icon name="user" /></div><div><strong>{user.name}</strong><span>{isDietitian ? "Dietitian" : "Consumer"}</span></div><button className="logout-button" onClick={logout}>Log out</button></div>
+      </aside>
+      <div className="main-area">
+        {currentTab === "home" && <Dashboard goToLog={() => navigate("log")} />}
+        {currentTab === "log" && <MealLog onSave={(meal) => { setMeals([meal, ...meals]); navigate("history") }} />}
+        {currentTab === "history" && <History meals={meals} />}
+        {currentTab === "wearable" && <Wearable />}
+        {currentTab === "patients" && isDietitian && <Screen title="Patients" eyebrow="Dietitian workspace"><section className="card"><h2>Patient management is coming soon</h2><p>Your assigned patients will appear here in a future NutriTrack update.</p></section></Screen>}
+        {currentTab === "charting" && isDietitian && <Charting />}
+      </div>
+      <nav className="bottom-nav" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>{tabs.map((item) => <button key={item.id} className={currentTab === item.id ? "active" : ""} onClick={() => navigate(item.id)}><Icon name={item.icon} /><span>{item.label}</span></button>)}</nav>
+    </div>
+  )
 }

@@ -1,0 +1,165 @@
+{
+  "info": {
+    "_postman_id": "5507fa04-fc58-4a2d-899d-0e7d2d06ec43",
+    "name": "NutriTrack Authentication",
+    "description": "Register and log in consumers and dietitians, inspect the current user, and exercise authentication and role errors. Seeded demo accounts are documented in backend/seed.js.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Register consumer",
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "if (pm.response.code === 201) {",
+            "  const result = pm.response.json();",
+            "  pm.collectionVariables.set('authToken', result.token);",
+            "  pm.collectionVariables.set('consumerToken', result.token);",
+            "}"
+          ]
+        }
+      }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{registerName}}\",\n  \"email\": \"{{registerEmail}}\",\n  \"password\": \"{{registerPassword}}\",\n  \"role\": \"consumer\"\n}"
+        },
+        "url": "{{baseUrl}}/api/auth/register"
+      },
+      "response": [{
+        "name": "Created",
+        "status": "Created",
+        "code": 201,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"token\": \"<jwt-token>\",\n  \"user\": { \"id\": \"<user-id>\", \"name\": \"New Consumer\", \"role\": \"consumer\" }\n}"
+      }]
+    },
+    {
+      "name": "Login (demo dietitian)",
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "if (pm.response.code === 200) {",
+            "  pm.collectionVariables.set('authToken', pm.response.json().token);",
+            "}"
+          ]
+        }
+      }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"dietitian@nutritrack.demo\",\n  \"password\": \"DietitianDemo2026!\"\n}"
+        },
+        "url": "{{baseUrl}}/api/auth/login"
+      },
+      "response": [{
+        "name": "Login successful",
+        "status": "OK",
+        "code": 200,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"token\": \"<jwt-token>\",\n  \"user\": { \"id\": \"<user-id>\", \"name\": \"Ava Dietitian\", \"role\": \"dietitian\" }\n}"
+      }]
+    },
+    {
+      "name": "Get current user (valid token)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
+        "url": "{{baseUrl}}/api/auth/me"
+      },
+      "response": [{
+        "name": "Current user",
+        "status": "OK",
+        "code": 200,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"user\": { \"id\": \"<user-id>\", \"name\": \"Ava Dietitian\", \"role\": \"dietitian\" }\n}"
+      }]
+    },
+    {
+      "name": "Get current user (no token: 401)",
+      "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/auth/me" },
+      "response": [{
+        "name": "Authentication required",
+        "status": "Unauthorized",
+        "code": 401,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"error\": \"Authentication required.\",\n  \"code\": \"AUTH_REQUIRED\"\n}"
+      }]
+    },
+    {
+      "name": "Get current user (expired token: 401)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{expiredToken}}" }],
+        "url": "{{baseUrl}}/api/auth/me",
+        "description": "Set expiredToken to a previously issued JWT that has expired."
+      },
+      "response": [{
+        "name": "Session expired",
+        "status": "Unauthorized",
+        "code": 401,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"error\": \"Your session has expired. Please log in again.\",\n  \"code\": \"TOKEN_EXPIRED\"\n}"
+      }]
+    },
+    {
+      "name": "Get current user (malformed token: 401)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer not.a.valid.jwt" }],
+        "url": "{{baseUrl}}/api/auth/me"
+      },
+      "response": [{
+        "name": "Invalid token",
+        "status": "Unauthorized",
+        "code": 401,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"error\": \"Invalid authentication token.\",\n  \"code\": \"INVALID_TOKEN\"\n}"
+      }]
+    },
+    {
+      "name": "Validate note (consumer token: 403)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{consumerToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": { "mode": "raw", "raw": "{}" },
+        "url": "{{baseUrl}}/api/notes/validate",
+        "description": "Register a consumer or log in with alex@nutritrack.demo first. A valid consumer token receives 403 even if the note body is empty."
+      },
+      "response": [{
+        "name": "Dietitian role required",
+        "status": "Forbidden",
+        "code": 403,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"error\": \"A dietitian role is required.\",\n  \"code\": \"FORBIDDEN\"\n}"
+      }]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3001" },
+    { "key": "registerName", "value": "Postman Consumer" },
+    { "key": "registerEmail", "value": "replace-with-a-unique-email@example.com" },
+    { "key": "registerPassword", "value": "ExamplePassword2026!" },
+    { "key": "authToken", "value": "" },
+    { "key": "consumerToken", "value": "" },
+    { "key": "expiredToken", "value": "" }
+  ]
+}

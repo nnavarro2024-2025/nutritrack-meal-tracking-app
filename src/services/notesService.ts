@@ -1,3 +1,5 @@
+import { fetchWithAuth } from "./authService"
+
 export type AssessmentDomain =
   | "food/nutrition-related history"
   | "anthropometric measurements"
@@ -132,7 +134,7 @@ export async function fetchNotesTerminology(): Promise<NotesTerminology> {
 }
 
 export async function validateClinicalNote(note: ClinicalNote): Promise<void> {
-  const response = await fetch(`${apiBaseUrl}/api/notes/validate`, {
+  const response = await fetchWithAuth(`${apiBaseUrl}/api/notes/validate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(note),
