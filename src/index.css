@@ -219,6 +219,25 @@ h1, h2, h3, .logo, .calorie-number, .metric-card strong { font-family: "Manrope"
 .print-button { min-height: 42px; padding: 0 12px; font-size: 12px; white-space: nowrap; }
 .charting-api-errors { display: grid; gap: 7px; margin-top: 14px; padding: 14px; border-radius: 12px; background: #fff1ef; color: var(--danger); font-size: 12px; overflow-wrap: anywhere; }
 .review-error { margin-top: 4px; }
+.inline-retry { padding: 0; border: 0; background: none; color: white; font-weight: 700; text-decoration: underline; }
+.patient-list { display: grid; gap: 12px; }
+.patient-row { width: 100%; display: flex; align-items: center; gap: 14px; padding: 16px; text-align: left; color: var(--ink); cursor: pointer; }
+.patient-row > svg { margin-left: auto; color: var(--green); }
+.patient-row-copy { display: grid; gap: 4px; }
+.patient-row-copy small { color: var(--muted); }
+.patient-today-card, .patient-week-card { margin-bottom: 18px; }
+.patient-calories { color: var(--green-dark); font-size: 22px; }
+.patient-macros { display: flex; flex-wrap: wrap; gap: 12px 24px; color: var(--muted); font-size: 13px; }
+.patient-macros strong { margin-left: 4px; color: var(--ink); }
+.patient-week-chart { min-height: 180px; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; align-items: end; }
+.patient-week-day { height: 160px; display: grid; grid-template-rows: 20px 1fr 20px; justify-items: center; align-items: end; gap: 6px; color: var(--muted); }
+.patient-week-day > strong { font-size: 10px; }
+.patient-week-day > small { font-size: 10px; }
+.patient-week-track { width: min(100%, 34px); height: 100%; display: flex; align-items: end; overflow: hidden; border-radius: 8px; background: var(--green-pale); }
+.patient-week-track i { width: 100%; border-radius: 8px 8px 0 0; background: var(--green); }
+.patient-meals-section { display: grid; gap: 12px; margin-top: 26px; }
+.patient-start-chart { width: 100%; margin-top: 22px; }
+.meal-card .meal-copy > p + p { margin-top: 4px; }
 
 @media (min-width: 760px) {
   .app-shell { display: grid; grid-template-columns: 230px 1fr; }
@@ -241,6 +260,7 @@ h1, h2, h3, .logo, .calorie-number, .metric-card strong { font-family: "Manrope"
   .calorie-gauge { width: 130px; height: 130px; }
   .ring { width: 86px; height: 86px; }
   .meal-form > .primary-button { width: auto; justify-self: end; min-width: 190px; }
+  .patient-start-chart { width: auto; min-width: 180px; }
   .device-card { grid-template-columns: auto 1fr auto; }
   .device-card > button { grid-column: auto; width: auto; }
   .charting-card { padding: 24px; }

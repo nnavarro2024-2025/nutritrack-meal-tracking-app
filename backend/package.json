@@ -6,7 +6,9 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "seed": "node seed.js",
-    "test:auth": "node --test tests/auth.integration.test.js"
+    "test": "node --test tests/auth.integration.test.js",
+    "test:auth": "node --test tests/auth.integration.test.js",
+    "test:integration": "node --test tests/auth.integration.test.js"
   },
   "dependencies": {
     "ajv": "^8.20.0",
@@ -16,6 +18,7 @@
     "dotenv": "^18.0.9",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.11.4"
+    "mongoose": "^9.11.4",
+    "multer": "^2.5.0"
   }
 }

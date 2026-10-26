@@ -8,6 +8,8 @@ import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import dotenv from "dotenv"
 import authRoutes from "./routes/auth.js"
+import { mealRoutes } from "./routes/meals.js"
+import patientsRoutes from "./routes/patients.js"
 import { authenticateToken, requireRole } from "./middleware/auth.js"
 
 const backendDirectory = dirname(fileURLToPath(import.meta.url))
@@ -63,6 +65,8 @@ app.use(cors({
 }))
 app.use(express.json())
 app.use("/api/auth", authRoutes)
+app.use("/api/meals", mealRoutes)
+app.use("/api/patients", patientsRoutes)
 
 function formatValidationErrors(errors = []) {
   return errors.map((error) => {
@@ -180,6 +184,18 @@ app.get("/api/wearable/week", (_request, response) => {
 })
 
 app.use((error, _request, response, _next) => {
+  if (error?.code === "LIMIT_FILE_SIZE") {
+    response.status(400).json({ error: "Photo must be 5 MB or smaller.", code: "PHOTO_TOO_LARGE" })
+    return
+  }
+  if (error?.name === "MulterError") {
+    response.status(400).json({ error: error.message, code: "INVALID_PHOTO_UPLOAD" })
+    return
+  }
+  if (error?.message === "Photo must be a JPG, PNG, or WEBP image.") {
+    response.status(400).json({ error: error.message, code: "INVALID_PHOTO_TYPE" })
+    return
+  }
   if (error.message === "Origin is not allowed by CORS") {
     response.status(403).json({ error: error.message })
     return

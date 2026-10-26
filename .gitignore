@@ -6,6 +6,8 @@ build/
 !.env.example
 !backend/.env.example
 backend/.env
+backend/uploads/*
+!backend/uploads/.gitkeep
 .vite/
 vite.config.*.timestamp-*
 *.tsbuildinfo

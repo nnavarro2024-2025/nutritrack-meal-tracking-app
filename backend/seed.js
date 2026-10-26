@@ -4,6 +4,7 @@ import mongoose from "mongoose"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { User } from "./models/User.js"
+import { Meal } from "./models/Meal.js"
 
 const backendDirectory = dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: resolve(backendDirectory, ".env") })
@@ -43,6 +44,25 @@ async function seed() {
       },
       { upsert: true, new: true, runValidators: true },
     )
+  }
+
+  const sampleMeals = [
+    { mealType: "breakfast", foodName: "Oatmeal with berries", portionSize: "1 bowl", calories: 340, protein: 12, carbs: 58, fat: 8, notes: "Sample meal" },
+    { mealType: "lunch", foodName: "Grilled chicken salad", portionSize: "1 plate", calories: 520, protein: 42, carbs: 34, fat: 22, notes: "Sample meal" },
+    { mealType: "dinner", foodName: "Salmon with brown rice", portionSize: "1 plate", calories: 610, protein: 38, carbs: 62, fat: 24, notes: "Sample meal" },
+  ]
+  const consumers = await User.find({ email: { $in: demoAccounts.slice(1).map((account) => account.email) } })
+  for (const consumer of consumers) {
+    for (const [index, details] of sampleMeals.entries()) {
+      const loggedAt = new Date()
+      loggedAt.setDate(loggedAt.getDate() - Math.floor(index / 1.5))
+      loggedAt.setHours([8, 12, 18][index], 0, 0, 0)
+      await Meal.findOneAndUpdate(
+        { user: consumer._id, foodName: details.foodName, loggedAt },
+        { $setOnInsert: { ...details, user: consumer._id, loggedAt } },
+        { upsert: true, new: true, runValidators: true },
+      )
+    }
   }
 
   console.log("NutriTrack demo accounts are ready:")

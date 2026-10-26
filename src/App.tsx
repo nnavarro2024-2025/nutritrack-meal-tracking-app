@@ -1,11 +1,19 @@
 import { FormEvent, ReactNode, useEffect, useState } from "react"
-import {
-  initialMeals,
-  Meal,
-  todaySummary,
-} from "./data/mockData"
+import { todaySummary } from "./data/mockData"
 import Charting from "./components/Charting"
 import { fetchDailyWearableData, fetchWeeklyWearableData, WearableDailyData } from "./services/wearableService"
+import {
+  CreateMealInput,
+  MealRecord,
+  Patient,
+  PatientSummary,
+  createMeal,
+  fetchMealPhoto,
+  fetchMyMeals,
+  fetchPatientMeals,
+  fetchPatientSummary,
+  fetchPatients,
+} from "./services/mealService"
 import {
   AuthApiError,
   AuthUser,
@@ -75,9 +83,20 @@ function ProgressRing({ value, goal, color, label }: { value: number; goal: numb
   )
 }
 
-function Dashboard({ goToLog }: { goToLog: () => void }) {
+function isToday(value: string) {
+  const date = new Date(value)
+  const today = new Date()
+  return date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate()
+}
+
+function Dashboard({ goToLog, userName }: { goToLog: () => void; userName: string }) {
   const [state, setState] = useState<ViewState>("loading")
   const [wearableData, setWearableData] = useState<WearableDailyData | null>(null)
+  const [meals, setMeals] = useState<MealRecord[]>([])
+  const [mealState, setMealState] = useState<ViewState>("loading")
+  const [mealRefresh, setMealRefresh] = useState(0)
   const [refreshKey, setRefreshKey] = useState(0)
   useEffect(() => {
     let active = true
@@ -94,6 +113,21 @@ function Dashboard({ goToLog }: { goToLog: () => void }) {
       })
     return () => { active = false }
   }, [refreshKey])
+  useEffect(() => {
+    let active = true
+    setMealState("loading")
+    fetchMyMeals()
+      .then((result) => {
+        if (active) {
+          setMeals(result)
+          setMealState(result.length ? "ready" : "empty")
+        }
+      })
+      .catch(() => {
+        if (active) setMealState("error")
+      })
+    return () => { active = false }
+  }, [mealRefresh])
   const retry = () => {
     setState("loading")
     setRefreshKey((key) => key + 1)
@@ -110,16 +144,23 @@ function Dashboard({ goToLog }: { goToLog: () => void }) {
     return <Screen title="Today" action={<StatePicker value={state} onChange={updateState} />}><StatusState type={unavailableState} onRetry={retry} /></Screen>
   }
   if (state !== "ready") return <Screen title="Today" action={<StatePicker value={state} onChange={setState} />}><StatusState type={state} onRetry={retry} /></Screen>
-  const calPct = Math.round((todaySummary.calories.current / todaySummary.calories.goal) * 100)
+  const todayMeals = meals.filter((meal) => isToday(meal.loggedAt))
+  const totals = todayMeals.reduce((result, meal) => ({
+    calories: result.calories + meal.calories,
+    protein: result.protein + meal.protein,
+    carbs: result.carbs + meal.carbs,
+    fat: result.fat + meal.fat,
+  }), { calories: 0, protein: 0, carbs: 0, fat: 0 })
+  const calPct = Math.round((totals.calories / todaySummary.calories.goal) * 100)
   return (
-    <Screen title="Good morning, Alex" eyebrow="Sunday, May 18" action={<StatePicker value={state} onChange={setState} />}>
+    <Screen title={`Good morning, ${userName.split(" ")[0]}`} eyebrow={new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })} action={<StatePicker value={state} onChange={setState} />}>
       <section className="calorie-card">
-        <div><span className="section-kicker">TODAY’S ENERGY</span><div className="calorie-number">{todaySummary.calories.current.toLocaleString()}</div><p>of {todaySummary.calories.goal.toLocaleString()} kcal</p></div>
-        <div className="calorie-gauge" style={{ "--pct": `${calPct * 3.6}deg` } as React.CSSProperties}><div><strong>{todaySummary.calories.goal - todaySummary.calories.current}</strong><small>left</small></div></div>
+        <div><span className="section-kicker">TODAY’S ENERGY</span>{mealState === "loading" ? <div className="skeleton wide" /> : mealState === "error" ? <p role="alert">Couldn’t load today’s meals. <button className="inline-retry" onClick={() => setMealRefresh((value) => value + 1)}>Try again</button></p> : <><div className="calorie-number">{totals.calories.toLocaleString()}</div><p>of {todaySummary.calories.goal.toLocaleString()} kcal</p>{mealState === "empty" || todayMeals.length === 0 ? <small>No meals logged today yet.</small> : null}</>}</div>
+        <div className="calorie-gauge" style={{ "--pct": `${calPct * 3.6}deg` } as React.CSSProperties}><div><strong>{Math.max(0, todaySummary.calories.goal - totals.calories)}</strong><small>left</small></div></div>
       </section>
       <section className="card">
         <div className="section-heading"><div><span className="section-kicker">DAILY BALANCE</span><h2>Macronutrients</h2></div><span className="fresh-pill">On track</span></div>
-        <div className="rings">{todaySummary.macros.map((m) => <ProgressRing key={m.label} {...m} />)}</div>
+        {mealState === "loading" ? <div className="skeleton wide" /> : <div className="rings">{todaySummary.macros.map((macro) => <ProgressRing key={macro.label} {...macro} value={totals[macro.label.toLowerCase() as "protein" | "carbs" | "fat"]} />)}</div>}
       </section>
       <div className="metric-grid">
         <section className="metric-card"><div className="metric-icon mint"><Icon name="steps" /></div><span>Steps</span><strong>{wearableData.steps.toLocaleString()}</strong><small>of {todaySummary.stepGoal.toLocaleString()}</small><div className="progress"><i style={{ width: `${Math.min(100, wearableData.steps / 100)}%` }} /></div></section>
@@ -133,40 +174,78 @@ function Dashboard({ goToLog }: { goToLog: () => void }) {
 const fields = ["food", "portion", "calories", "protein", "carbs", "fat"] as const
 type MealForm = Record<(typeof fields)[number], string> & { type: string; notes: string }
 
-function MealLog({ onSave }: { onSave: (meal: Meal) => void }) {
-  const blank: MealForm = { type: "Breakfast", food: "", portion: "", calories: "", protein: "", carbs: "", fat: "", notes: "" }
+function MealLog({ onSave }: { onSave: (meal: CreateMealInput) => Promise<void> }) {
+  const blank: MealForm = { type: "breakfast", food: "", portion: "", calories: "", protein: "", carbs: "", fat: "", notes: "" }
   const [form, setForm] = useState(blank)
   const [errors, setErrors] = useState<Partial<Record<keyof MealForm, string>>>({})
   const [preview, setPreview] = useState("")
-  const [success, setSuccess] = useState(false)
+  const [photo, setPhoto] = useState<File | null>(null)
+  const [formError, setFormError] = useState("")
+  const [busy, setBusy] = useState(false)
   const update = (key: keyof MealForm, value: string) => setForm((old) => ({ ...old, [key]: value }))
-  const submit = (e: FormEvent) => {
+  useEffect(() => () => { if (preview.startsWith("blob:")) URL.revokeObjectURL(preview) }, [preview])
+  const submit = async (e: FormEvent) => {
     e.preventDefault()
     const next: typeof errors = {}
     fields.forEach((key) => { if (!form[key].trim()) next[key] = "This field is required" })
-    if (Number(form.calories) < 0) next.calories = "Enter a valid amount"
+    fields.slice(2).forEach((key) => {
+      if (!Number.isFinite(Number(form[key])) || Number(form[key]) < 0) next[key] = "Enter a valid non-negative amount"
+    })
     setErrors(next)
+    setFormError("")
     if (Object.keys(next).length) return
-    onSave({ id: Date.now(), type: form.type, name: form.food, portion: form.portion, calories: Number(form.calories), protein: Number(form.protein), carbs: Number(form.carbs), fat: Number(form.fat), time: "Just now", image: preview })
-    setForm(blank); setPreview(""); setSuccess(true)
-    setTimeout(() => setSuccess(false), 3500)
+    setBusy(true)
+    try {
+      await onSave({
+        mealType: form.type as CreateMealInput["mealType"],
+        foodName: form.food.trim(),
+        portionSize: form.portion.trim(),
+        calories: Number(form.calories),
+        protein: Number(form.protein),
+        carbs: Number(form.carbs),
+        fat: Number(form.fat),
+        notes: form.notes.trim(),
+        photo,
+      })
+      setForm(blank)
+      setPhoto(null)
+      setPreview("")
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Meal could not be saved. Please try again.")
+    } finally {
+      setBusy(false)
+    }
   }
   return (
     <Screen title="Log a meal" eyebrow="Add what you ate">
-      {success && <div className="success-banner"><Icon name="check" /><div><strong>Meal saved</strong><span>Your daily totals are updated.</span></div></div>}
-      <form className="meal-form" onSubmit={submit} noValidate>
+      {formError && <div className="auth-message" role="alert">{formError}</div>}
+      <form className="meal-form" onSubmit={(event) => { void submit(event) }} noValidate>
         <section className="card form-card">
-          <div className="field"><label htmlFor="mealType">Meal type</label><select id="mealType" value={form.type} onChange={(e) => update("type", e.target.value)}><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option></select></div>
+          <div className="field"><label htmlFor="mealType">Meal type</label><select id="mealType" value={form.type} onChange={(e) => update("type", e.target.value)}><option value="breakfast">Breakfast</option><option value="lunch">Lunch</option><option value="dinner">Dinner</option><option value="snack">Snack</option></select></div>
           <TextField label="Food name" name="food" placeholder="e.g. Grilled chicken salad" form={form} update={update} error={errors.food} />
           <div className="form-row"><TextField label="Portion size" name="portion" placeholder="e.g. 1 bowl" form={form} update={update} error={errors.portion} /><TextField label="Calories" name="calories" placeholder="0" type="number" form={form} update={update} error={errors.calories} /></div>
           <div className="form-row three"><TextField label="Protein (g)" name="protein" placeholder="0" type="number" form={form} update={update} error={errors.protein} /><TextField label="Carbs (g)" name="carbs" placeholder="0" type="number" form={form} update={update} error={errors.carbs} /><TextField label="Fat (g)" name="fat" placeholder="0" type="number" form={form} update={update} error={errors.fat} /></div>
           <div className="field"><label htmlFor="notes">Notes <span>Optional</span></label><textarea id="notes" rows={3} placeholder="How did it make you feel?" value={form.notes} onChange={(e) => update("notes", e.target.value)} /></div>
           <label className="photo-upload">
             {preview ? <img src={preview} alt="Meal preview" /> : <><div className="upload-icon"><Icon name="camera" /></div><strong>Add a meal photo</strong><span>PNG or JPG, up to 5MB</span></>}
-            <input type="file" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) setPreview(URL.createObjectURL(file)) }} />
+            <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (!file) return
+              setFormError("")
+              if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+                setFormError("Choose a JPG, PNG, or WEBP photo.")
+                return
+              }
+              if (file.size > 5 * 1024 * 1024) {
+                setFormError("Photo must be 5 MB or smaller.")
+                return
+              }
+              setPhoto(file)
+              setPreview(URL.createObjectURL(file))
+            }} />
           </label>
         </section>
-        <button className="primary-button" type="submit">Save meal <Icon name="arrow" /></button>
+        <button className="primary-button" type="submit" disabled={busy}>{busy ? "Saving…" : "Save meal"} <Icon name="arrow" /></button>
       </form>
     </Screen>
   )
@@ -176,14 +255,183 @@ function TextField({ label, name, placeholder, type = "text", form, update, erro
   return <div className={`field ${error ? "has-error" : ""}`}><label htmlFor={name}>{label}</label><input id={name} type={type} min="0" placeholder={placeholder} value={form[name]} onChange={(e) => update(name, e.target.value)} />{error && <span className="field-error">{error}</span>}</div>
 }
 
-function History({ meals }: { meals: Meal[] }) {
-  const [state, setState] = useState<ViewState>("ready")
+function MealPhoto({ meal }: { meal: MealRecord }) {
+  const [photoUrl, setPhotoUrl] = useState("")
+  useEffect(() => {
+    let active = true
+    let objectUrl = ""
+    if (meal.photoUrl) {
+      void fetchMealPhoto(meal.photoUrl).then((url) => {
+        objectUrl = url
+        if (active) setPhotoUrl(url)
+        else URL.revokeObjectURL(url)
+      }).catch(() => {
+        if (active) setPhotoUrl("")
+      })
+    } else {
+      setPhotoUrl("")
+    }
+    return () => {
+      active = false
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [meal.photoUrl])
+  return photoUrl ? <img src={photoUrl} alt={`${meal.foodName}`} /> : <div className="meal-placeholder"><Icon name="camera" /></div>
+}
+
+function mealDisplayTime(meal: MealRecord) {
+  const date = new Date(meal.loggedAt)
+  return isToday(meal.loggedAt)
+    ? date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+    : date.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+}
+
+function History() {
+  const [previewState, setPreviewState] = useState<ViewState>("ready")
+  const [dataState, setDataState] = useState<ViewState>("loading")
+  const [meals, setMeals] = useState<MealRecord[]>([])
+  const [retryKey, setRetryKey] = useState(0)
+  useEffect(() => {
+    let active = true
+    setDataState("loading")
+    fetchMyMeals().then((result) => {
+      if (active) {
+        setMeals(result)
+        setDataState(result.length ? "ready" : "empty")
+      }
+    }).catch(() => {
+      if (active) setDataState("error")
+    })
+    return () => { active = false }
+  }, [retryKey])
+  const state = previewState === "ready" ? dataState : previewState
+  const retry = () => {
+    setPreviewState("ready")
+    setRetryKey((key) => key + 1)
+  }
   return (
-    <Screen title="Meal history" eyebrow="Your recent meals" action={<StatePicker value={state} onChange={setState} />}>
-      {state !== "ready" ? <StatusState type={state} onRetry={() => setState("ready")} /> : <div className="history-list">
-        <div className="history-date"><span>Today</span><small>{meals.filter((m) => m.time !== "Yesterday").length} meals</small></div>
-        {meals.map((meal) => <article className="meal-card" key={meal.id}>{meal.image ? <img src={meal.image} alt="" /> : <div className="meal-placeholder"><Icon name="camera" /></div>}<div className="meal-copy"><div><span className="meal-type">{meal.type}</span><small>{meal.time}</small></div><h3>{meal.name}</h3><p>{meal.portion} · {meal.protein}g P · {meal.carbs}g C · {meal.fat}g F</p></div><strong className="meal-cal">{meal.calories}<small>kcal</small></strong></article>)}
+    <Screen title="Meal history" eyebrow="Your recent meals" action={<StatePicker value={previewState} onChange={setPreviewState} />}>
+      {state !== "ready" ? <StatusState type={state} onRetry={retry} /> : <div className="history-list">
+        <div className="history-date"><span>All meals</span><small>{meals.length} meals</small></div>
+        {meals.map((meal) => <article className="meal-card" key={meal.id}><MealPhoto meal={meal} /><div className="meal-copy"><div><span className="meal-type">{meal.mealType}</span><small>{mealDisplayTime(meal)}</small></div><h3>{meal.foodName}</h3><p>{meal.portionSize} · {meal.protein}g P · {meal.carbs}g C · {meal.fat}g F</p>{meal.notes && <p>{meal.notes}</p>}</div><strong className="meal-cal">{meal.calories}<small>kcal</small></strong></article>)}
       </div>}
+    </Screen>
+  )
+}
+
+function PatientsPage({ onStartChart }: { onStartChart: () => void }) {
+  const [patients, setPatients] = useState<Patient[]>([])
+  const [state, setState] = useState<ViewState>("loading")
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
+  const [retryKey, setRetryKey] = useState(0)
+
+  useEffect(() => {
+    let active = true
+    setState("loading")
+    fetchPatients().then((result) => {
+      if (!active) return
+      setPatients(result)
+      setState(result.length ? "ready" : "empty")
+    }).catch(() => {
+      if (active) setState("error")
+    })
+    return () => { active = false }
+  }, [retryKey])
+
+  if (selectedPatient) {
+    return <PatientDetails patient={selectedPatient} onBack={() => setSelectedPatient(null)} onStartChart={onStartChart} />
+  }
+
+  return (
+    <Screen title="Patients" eyebrow="Dietitian workspace">
+      {state === "loading" || state === "error"
+        ? <StatusState type={state} onRetry={() => setRetryKey((key) => key + 1)} />
+        : state === "empty"
+          ? <section className="status-card"><div className="status-icon"><Icon name="user" size={25} /></div><h3>No assigned patients yet</h3><p>Consumers assigned to you will appear here.</p></section>
+          : <div className="patient-list">
+            {patients.map((patient) => (
+              <button className="patient-row card" key={patient.id} onClick={() => setSelectedPatient(patient)}>
+                <span className="avatar"><Icon name="user" /></span>
+                <span className="patient-row-copy"><strong>{patient.name}</strong><small>{patient.email}</small></span>
+                <Icon name="arrow" />
+              </button>
+            ))}
+          </div>}
+    </Screen>
+  )
+}
+
+function PatientDetails({
+  patient,
+  onBack,
+  onStartChart,
+}: {
+  patient: Patient
+  onBack: () => void
+  onStartChart: () => void
+}) {
+  const [summary, setSummary] = useState<PatientSummary | null>(null)
+  const [meals, setMeals] = useState<MealRecord[]>([])
+  const [state, setState] = useState<ViewState>("loading")
+  const [retryKey, setRetryKey] = useState(0)
+
+  useEffect(() => {
+    let active = true
+    setState("loading")
+    Promise.all([fetchPatientSummary(patient.id), fetchPatientMeals(patient.id)])
+      .then(([patientSummary, patientMeals]) => {
+        if (!active) return
+        setSummary(patientSummary)
+        setMeals(patientMeals)
+        setState("ready")
+      })
+      .catch(() => {
+        if (active) setState("error")
+      })
+    return () => { active = false }
+  }, [patient.id, retryKey])
+
+  return (
+    <Screen
+      title={patient.name}
+      eyebrow="Patient overview"
+      action={<button className="secondary-button" onClick={onBack}>Back to patients</button>}
+    >
+      {state !== "ready" ? <StatusState type={state} onRetry={() => setRetryKey((key) => key + 1)} /> : summary && <>
+        <section className="card patient-today-card">
+          <div className="section-heading"><div><span className="section-kicker">TODAY</span><h2>Nutrition totals</h2></div><strong className="patient-calories">{summary.today.calories.toLocaleString()} kcal</strong></div>
+          <div className="patient-macros">
+            <span>Protein <strong>{summary.today.protein}g</strong></span>
+            <span>Carbohydrates <strong>{summary.today.carbs}g</strong></span>
+            <span>Fat <strong>{summary.today.fat}g</strong></span>
+          </div>
+        </section>
+        <section className="card patient-week-card">
+          <div className="section-heading"><div><span className="section-kicker">LAST 7 DAYS</span><h2>Calories logged</h2></div></div>
+          <div className="patient-week-chart">
+            {summary.lastSevenDays.map((day) => (
+              <div className="patient-week-day" key={day.date}>
+                <strong>{day.calories}</strong>
+                <div className="patient-week-track"><i style={{ height: `${Math.max(4, Math.min(100, day.calories / 20))}%` }} /></div>
+                <small>{new Date(`${day.date}T00:00:00`).toLocaleDateString(undefined, { weekday: "short" })}</small>
+              </div>
+            ))}
+          </div>
+        </section>
+        <section className="patient-meals-section">
+          <div className="section-heading"><div><span className="section-kicker">RECENT ACTIVITY</span><h2>Meal history</h2></div><span className="fresh-pill">{meals.length} meals</span></div>
+          {meals.length ? <div className="history-list">
+            {meals.map((meal) => (
+              <article className="meal-card" key={meal.id}>
+                <MealPhoto meal={meal} />
+                <div className="meal-copy"><div><span className="meal-type">{meal.mealType}</span><small>{mealDisplayTime(meal)}</small></div><h3>{meal.foodName}</h3><p>{meal.portionSize} · {meal.protein}g P · {meal.carbs}g C · {meal.fat}g F</p>{meal.notes && <p>{meal.notes}</p>}</div>
+                <strong className="meal-cal">{meal.calories}<small>kcal</small></strong>
+              </article>
+            ))}
+          </div> : <section className="status-card"><h3>No meals logged yet</h3><p>This patient’s meal history will appear here.</p></section>}
+        </section>
+        <button className="primary-button patient-start-chart" onClick={onStartChart}>Start chart <Icon name="arrow" /></button>
+      </>}
     </Screen>
   )
 }
@@ -329,7 +577,6 @@ export default function App() {
   const [restoringSession, setRestoringSession] = useState(() => Boolean(getAuthToken()))
   const [authMessage, setAuthMessage] = useState("")
   const [tab, setTab] = useState<Tab>("home")
-  const [meals, setMeals] = useState(initialMeals)
   useEffect(() => { window.scrollTo(0, 0) }, [tab])
   useEffect(() => {
     let active = true
@@ -400,11 +647,11 @@ export default function App() {
         <div className="profile"><div className="avatar"><Icon name="user" /></div><div><strong>{user.name}</strong><span>{isDietitian ? "Dietitian" : "Consumer"}</span></div><button className="logout-button" onClick={logout}>Log out</button></div>
       </aside>
       <div className="main-area">
-        {currentTab === "home" && <Dashboard goToLog={() => navigate("log")} />}
-        {currentTab === "log" && <MealLog onSave={(meal) => { setMeals([meal, ...meals]); navigate("history") }} />}
-        {currentTab === "history" && <History meals={meals} />}
+        {currentTab === "home" && <Dashboard goToLog={() => navigate("log")} userName={user.name} />}
+        {currentTab === "log" && <MealLog onSave={async (meal) => { await createMeal(meal); navigate("history") }} />}
+        {currentTab === "history" && <History />}
         {currentTab === "wearable" && <Wearable />}
-        {currentTab === "patients" && isDietitian && <Screen title="Patients" eyebrow="Dietitian workspace"><section className="card"><h2>Patient management is coming soon</h2><p>Your assigned patients will appear here in a future NutriTrack update.</p></section></Screen>}
+        {currentTab === "patients" && isDietitian && <PatientsPage onStartChart={() => navigate("charting")} />}
         {currentTab === "charting" && isDietitian && <Charting />}
       </div>
       <nav className="bottom-nav" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>{tabs.map((item) => <button key={item.id} className={currentTab === item.id ? "active" : ""} onClick={() => navigate(item.id)}><Icon name={item.icon} /><span>{item.label}</span></button>)}</nav>

@@ -8,7 +8,9 @@ import dotenv from "dotenv"
 import jwt from "jsonwebtoken"
 import mongoose from "mongoose"
 import bcrypt from "bcryptjs"
+import { unlink } from "node:fs/promises"
 import { User } from "../models/User.js"
+import { Meal } from "../models/Meal.js"
 
 const backendDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 dotenv.config({ path: resolve(backendDirectory, ".env") })
@@ -18,6 +20,13 @@ const testPassword = "TestPass2026!"
 let consumerToken
 let consumerId
 let dietitianToken
+let createdConsumerId
+let createdConsumerToken
+let testMealId
+let photoMealId
+let seededConsumerToken
+let seededOtherConsumerToken
+let otherDietitianId
 
 before(() => {
   execFileSync(process.execPath, [resolve(backendDirectory, "seed.js")], {
@@ -29,7 +38,30 @@ before(() => {
 
 after(async () => {
   await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 })
+  const photos = await Meal.find({
+    $or: [
+      ...(createdConsumerId ? [{ user: createdConsumerId }] : []),
+      ...(photoMealId ? [{ _id: photoMealId }] : []),
+    ],
+  }).select("photoPath")
+  await Meal.deleteMany({
+    $or: [
+      ...(createdConsumerId ? [{ user: createdConsumerId }] : []),
+      ...(photoMealId ? [{ _id: photoMealId }] : []),
+    ],
+  })
+  for (const meal of photos) {
+    if (meal.photoPath) {
+      try {
+        await unlink(resolve(backendDirectory, "uploads", meal.photoPath))
+      } catch (error) {
+        if (error.code !== "ENOENT") throw error
+      }
+    }
+  }
   await User.deleteOne({ email: testEmail })
+  if (createdConsumerId) await User.deleteOne({ _id: createdConsumerId })
+  if (otherDietitianId) await User.deleteOne({ _id: otherDietitianId })
   await mongoose.disconnect()
 })
 
@@ -37,7 +69,7 @@ async function request(path, { token, ...options } = {}) {
   return fetch(`${baseUrl}${path}`, {
     ...options,
     headers: {
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(options.body && !(options.body instanceof FormData) ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
@@ -170,5 +202,195 @@ test("k. seed script is idempotent and assigns consumers to the demo dietitian",
   const consumers = accounts.filter((user) => user.role === "consumer")
   assert.equal(consumers.length, 2)
   assert.ok(consumers.every((user) => user.assignedDietitian?.toString() === dietitian._id.toString()))
+  const sampleMealCounts = await Promise.all(
+    consumers.map((consumer) => Meal.countDocuments({ user: consumer._id, notes: "Sample meal" })),
+  )
+  assert.deepEqual(sampleMealCounts, [3, 3])
   await mongoose.disconnect()
+})
+
+test("a. consumers can create meals and see them in their own list", async () => {
+  const registration = await request("/api/auth/register", {
+    method: "POST",
+    body: JSON.stringify({
+      name: "Meal Test Consumer",
+      email: `meal-test-${Date.now()}@example.test`,
+      password: testPassword,
+      role: "consumer",
+    }),
+  })
+  assert.equal(registration.status, 201)
+  const account = await registration.json()
+  createdConsumerId = account.user.id
+  createdConsumerToken = account.token
+
+  const createResponse = await request("/api/meals", {
+    method: "POST",
+    token: createdConsumerToken,
+    body: JSON.stringify({
+      mealType: "lunch",
+      foodName: "Integration test lentil bowl",
+      portionSize: "1 bowl",
+      calories: 420,
+      protein: 23,
+      carbs: 56,
+      fat: 11,
+      notes: "created by integration test",
+    }),
+  })
+  assert.equal(createResponse.status, 201)
+  const created = (await createResponse.json()).meal
+  testMealId = created.id
+  assert.equal(created.foodName, "Integration test lentil bowl")
+  const listResponse = await request("/api/meals", { token: createdConsumerToken })
+  assert.equal(listResponse.status, 200)
+  assert.ok((await listResponse.json()).meals.some((meal) => meal.id === testMealId))
+})
+
+test("b. consumers cannot see another consumer's meals", async () => {
+  const login = await request("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email: "jordan@nutritrack.demo", password: "ConsumerDemo2026!" }),
+  })
+  assert.equal(login.status, 200)
+  seededOtherConsumerToken = (await login.json()).token
+  const response = await request("/api/meals", { token: seededOtherConsumerToken })
+  assert.equal(response.status, 200)
+  assert.equal((await response.json()).meals.some((meal) => meal.id === testMealId), false)
+})
+
+test("c. consumers receive 403 when calling dietitian endpoints", async () => {
+  const response = await request("/api/patients", { token: createdConsumerToken })
+  assert.equal(response.status, 403)
+})
+
+test("d. dietitians see only assigned patients and cannot access unassigned consumers", async () => {
+  const login = await request("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email: "dietitian@nutritrack.demo", password: "DietitianDemo2026!" }),
+  })
+  assert.equal(login.status, 200)
+  dietitianToken = (await login.json()).token
+  const response = await request("/api/patients", { token: dietitianToken })
+  assert.equal(response.status, 200)
+  const patients = (await response.json()).patients
+  assert.equal(patients.some((patient) => patient.id === createdConsumerId), false)
+  assert.ok(patients.some((patient) => patient.email === "alex@nutritrack.demo"))
+  assert.ok(patients.some((patient) => patient.email === "jordan@nutritrack.demo"))
+  const assignedPatient = patients.find((patient) => patient.email === "alex@nutritrack.demo")
+  const assignedMeals = await request(`/api/patients/${assignedPatient.id}/meals`, { token: dietitianToken })
+  assert.equal(assignedMeals.status, 200)
+  assert.equal((await assignedMeals.json()).patient.id, assignedPatient.id)
+  const assignedSummary = await request(`/api/patients/${assignedPatient.id}/summary`, { token: dietitianToken })
+  assert.equal(assignedSummary.status, 200)
+  assert.equal((await assignedSummary.json()).lastSevenDays.length, 7)
+  const forbidden = await request(`/api/patients/${createdConsumerId}/meals`, { token: dietitianToken })
+  assert.equal(forbidden.status, 403)
+  const forbiddenSummary = await request(`/api/patients/${createdConsumerId}/summary`, { token: dietitianToken })
+  assert.equal(forbiddenSummary.status, 403)
+})
+
+test("e. requests without a token are rejected with 401", async () => {
+  assert.equal((await request("/api/meals")).status, 401)
+  assert.equal((await request("/api/patients")).status, 401)
+  assert.equal((await request("/api/meals/000000000000000000000000/photo")).status, 401)
+})
+
+test("f. invalid photo type and oversized photo uploads are rejected clearly", async () => {
+  const invalidTypeBody = new FormData()
+  invalidTypeBody.set("mealType", "snack")
+  invalidTypeBody.set("foodName", "Invalid type photo")
+  invalidTypeBody.set("portionSize", "1 item")
+  invalidTypeBody.set("calories", "20")
+  invalidTypeBody.set("protein", "1")
+  invalidTypeBody.set("carbs", "4")
+  invalidTypeBody.set("fat", "0")
+  invalidTypeBody.append("photo", new Blob(["not an image"], { type: "text/plain" }), "note.txt")
+  const invalidTypeResponse = await request("/api/meals", { method: "POST", token: createdConsumerToken, body: invalidTypeBody })
+  assert.equal(invalidTypeResponse.status, 400)
+  assert.match((await invalidTypeResponse.json()).error, /JPG, PNG, or WEBP/i)
+
+  const oversizedBody = new FormData()
+  oversizedBody.set("mealType", "snack")
+  oversizedBody.set("foodName", "Oversized photo")
+  oversizedBody.set("portionSize", "1 item")
+  oversizedBody.set("calories", "20")
+  oversizedBody.set("protein", "1")
+  oversizedBody.set("carbs", "4")
+  oversizedBody.set("fat", "0")
+  oversizedBody.append("photo", new Blob([Buffer.alloc(5 * 1024 * 1024 + 1)], { type: "image/png" }), "large.png")
+  const oversizedResponse = await request("/api/meals", { method: "POST", token: createdConsumerToken, body: oversizedBody })
+  assert.equal(oversizedResponse.status, 400)
+  assert.match((await oversizedResponse.json()).error, /5 MB or smaller/i)
+})
+
+test("g. meal photos are available to the owner and assigned dietitian only", async () => {
+  const ownerLogin = await request("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email: "alex@nutritrack.demo", password: "ConsumerDemo2026!" }),
+  })
+  assert.equal(ownerLogin.status, 200)
+  seededConsumerToken = (await ownerLogin.json()).token
+  const form = new FormData()
+  form.set("mealType", "snack")
+  form.set("foodName", "Private photo test")
+  form.set("portionSize", "1 item")
+  form.set("calories", "50")
+  form.set("protein", "2")
+  form.set("carbs", "8")
+  form.set("fat", "1")
+  form.append("photo", new Blob(["private image bytes"], { type: "image/png" }), "meal.png")
+  const createdResponse = await request("/api/meals", { method: "POST", token: seededConsumerToken, body: form })
+  assert.equal(createdResponse.status, 201)
+  photoMealId = (await createdResponse.json()).meal.id
+
+  const ownerPhoto = await request(`/api/meals/${photoMealId}/photo`, { token: seededConsumerToken })
+  assert.equal(ownerPhoto.status, 200)
+  assert.match(ownerPhoto.headers.get("content-type"), /image\/png/)
+  assert.equal(await ownerPhoto.text(), "private image bytes")
+  const assignedDietitianPhoto = await request(`/api/meals/${photoMealId}/photo`, { token: dietitianToken })
+  assert.equal(assignedDietitianPhoto.status, 200)
+  assert.equal(await assignedDietitianPhoto.text(), "private image bytes")
+  const otherConsumerPhoto = await request(`/api/meals/${photoMealId}/photo`, { token: seededOtherConsumerToken })
+  assert.equal(otherConsumerPhoto.status, 403)
+  const unassignedDietitianLogin = await request("/api/auth/register", {
+    method: "POST",
+    body: JSON.stringify({
+      name: "Other Dietitian",
+      email: `other-dietitian-${Date.now()}@example.test`,
+      password: testPassword,
+      role: "dietitian",
+    }),
+  })
+  assert.equal(unassignedDietitianLogin.status, 201)
+  const otherDietitian = await unassignedDietitianLogin.json()
+  otherDietitianId = otherDietitian.user.id
+  const otherDietitianToken = otherDietitian.token
+  assert.equal((await request(`/api/meals/${photoMealId}/photo`, { token: otherDietitianToken })).status, 403)
+})
+
+test("h. negative nutrient values and missing food names return clear errors", async () => {
+  const baseMeal = {
+    mealType: "dinner",
+    foodName: "Validation test meal",
+    portionSize: "1 plate",
+    calories: 300,
+    protein: 20,
+    carbs: 30,
+    fat: 10,
+  }
+  const negative = await request("/api/meals", {
+    method: "POST",
+    token: createdConsumerToken,
+    body: JSON.stringify({ ...baseMeal, calories: -1 }),
+  })
+  assert.equal(negative.status, 400)
+  assert.match((await negative.json()).error, /calories cannot be negative/i)
+  const missingFood = await request("/api/meals", {
+    method: "POST",
+    token: createdConsumerToken,
+    body: JSON.stringify({ ...baseMeal, foodName: "" }),
+  })
+  assert.equal(missingFood.status, 400)
+  assert.match((await missingFood.json()).error, /food name is required/i)
 })

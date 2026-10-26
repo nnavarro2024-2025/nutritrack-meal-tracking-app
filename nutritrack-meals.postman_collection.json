@@ -1,0 +1,229 @@
+{
+  "info": {
+    "_postman_id": "27cde098-27c9-4893-a8e6-48231c64aafa",
+    "name": "NutriTrack Meals and Patients",
+    "description": "Meal and assigned-patient API examples. Run nutritrack-auth.postman_collection.json first and set consumerToken/dietitianToken, then create meal requests to set mealId.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create a meal (consumer)",
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "if (pm.response.code === 201) {",
+            "  pm.collectionVariables.set('mealId', pm.response.json().meal.id);",
+            "}"
+          ]
+        }
+      }],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{consumerToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"mealType\": \"lunch\",\n  \"foodName\": \"Grilled chicken salad\",\n  \"portionSize\": \"1 plate\",\n  \"calories\": 520,\n  \"protein\": 42,\n  \"carbs\": 34,\n  \"fat\": 22,\n  \"notes\": \"Added from Postman\"\n}"
+        },
+        "url": "{{baseUrl}}/api/meals"
+      },
+      "response": [{
+        "name": "Meal created",
+        "status": "Created",
+        "code": 201,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"meal\": {\n    \"id\": \"<meal-id>\",\n    \"userId\": \"<consumer-id>\",\n    \"mealType\": \"lunch\",\n    \"foodName\": \"Grilled chicken salad\",\n    \"portionSize\": \"1 plate\",\n    \"calories\": 520,\n    \"protein\": 42,\n    \"carbs\": 34,\n    \"fat\": 22,\n    \"notes\": \"Added from Postman\",\n    \"loggedAt\": \"2026-10-26T12:00:00.000Z\",\n    \"photoUrl\": null\n  }\n}"
+      }]
+    },
+    {
+      "name": "Create a meal with a photo (consumer)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{consumerToken}}" }],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "mealType", "value": "snack", "type": "text" },
+            { "key": "foodName", "value": "Apple and yogurt", "type": "text" },
+            { "key": "portionSize", "value": "1 serving", "type": "text" },
+            { "key": "calories", "value": "180", "type": "text" },
+            { "key": "protein", "value": "8", "type": "text" },
+            { "key": "carbs", "value": "28", "type": "text" },
+            { "key": "fat", "value": "4", "type": "text" },
+            { "key": "notes", "value": "Photo example", "type": "text" },
+            { "key": "photo", "type": "file", "src": [] }
+          ]
+        },
+        "url": "{{baseUrl}}/api/meals",
+        "description": "Choose a local JPG, PNG, or WEBP file (5 MB maximum) for the photo field."
+      },
+      "response": [{
+        "name": "Meal created with private photo",
+        "status": "Created",
+        "code": 201,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"meal\": {\n    \"id\": \"<meal-id>\",\n    \"userId\": \"<consumer-id>\",\n    \"mealType\": \"snack\",\n    \"foodName\": \"Apple and yogurt\",\n    \"portionSize\": \"1 serving\",\n    \"calories\": 180,\n    \"protein\": 8,\n    \"carbs\": 28,\n    \"fat\": 4,\n    \"notes\": \"Photo example\",\n    \"loggedAt\": \"2026-10-26T15:00:00.000Z\",\n    \"photoUrl\": \"/api/meals/<meal-id>/photo\"\n  }\n}"
+      }]
+    },
+    {
+      "name": "List my meals (consumer)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{consumerToken}}" }],
+        "url": "{{baseUrl}}/api/meals"
+      },
+      "response": [{
+        "name": "Own meals newest first",
+        "status": "OK",
+        "code": 200,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"meals\": [\n    {\n      \"id\": \"<meal-id>\",\n      \"userId\": \"<consumer-id>\",\n      \"mealType\": \"lunch\",\n      \"foodName\": \"Grilled chicken salad\",\n      \"portionSize\": \"1 plate\",\n      \"calories\": 520,\n      \"protein\": 42,\n      \"carbs\": 34,\n      \"fat\": 22,\n      \"notes\": \"Added from Postman\",\n      \"loggedAt\": \"2026-10-26T12:00:00.000Z\",\n      \"photoUrl\": null\n    }\n  ]\n}"
+      }]
+    },
+    {
+      "name": "Delete my meal (consumer)",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{consumerToken}}" }],
+        "url": "{{baseUrl}}/api/meals/{{mealId}}"
+      },
+      "response": [{
+        "name": "Meal deleted",
+        "status": "OK",
+        "code": 200,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"deleted\": true,\n  \"id\": \"<meal-id>\"\n}"
+      }]
+    },
+    {
+      "name": "Get private meal photo",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{consumerToken}}" }],
+        "url": "{{baseUrl}}/api/meals/{{mealId}}/photo"
+      },
+      "response": [{
+        "name": "Photo returned to owner or assigned dietitian",
+        "status": "OK",
+        "code": 200,
+        "_postman_previewlanguage": "text",
+        "header": [{ "key": "Content-Type", "value": "image/jpeg" }],
+        "body": "<binary image response>"
+      }]
+    },
+    {
+      "name": "List assigned patients (dietitian)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{dietitianToken}}" }],
+        "url": "{{baseUrl}}/api/patients"
+      },
+      "response": [{
+        "name": "Assigned consumers",
+        "status": "OK",
+        "code": 200,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"patients\": [\n    { \"id\": \"<patient-id>\", \"name\": \"Alex Morgan\", \"email\": \"alex@nutritrack.demo\" },\n    { \"id\": \"<patient-id>\", \"name\": \"Jordan Lee\", \"email\": \"jordan@nutritrack.demo\" }\n  ]\n}"
+      }]
+    },
+    {
+      "name": "Get assigned patient's meals (dietitian)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{dietitianToken}}" }],
+        "url": "{{baseUrl}}/api/patients/{{patientId}}/meals"
+      },
+      "response": [{
+        "name": "Patient meal history",
+        "status": "OK",
+        "code": 200,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"patient\": { \"id\": \"<patient-id>\", \"name\": \"Alex Morgan\" },\n  \"meals\": []\n}"
+      }]
+    },
+    {
+      "name": "Get assigned patient's summary (dietitian)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{dietitianToken}}" }],
+        "url": "{{baseUrl}}/api/patients/{{patientId}}/summary"
+      },
+      "response": [{
+        "name": "Today's totals and last 7 days",
+        "status": "OK",
+        "code": 200,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"patient\": { \"id\": \"<patient-id>\", \"name\": \"Alex Morgan\" },\n  \"today\": { \"calories\": 860, \"protein\": 54, \"carbs\": 92, \"fat\": 30 },\n  \"lastSevenDays\": [\n    { \"date\": \"2026-10-20\", \"calories\": 0 },\n    { \"date\": \"2026-10-21\", \"calories\": 610 },\n    { \"date\": \"2026-10-22\", \"calories\": 0 },\n    { \"date\": \"2026-10-23\", \"calories\": 860 },\n    { \"date\": \"2026-10-24\", \"calories\": 0 },\n    { \"date\": \"2026-10-25\", \"calories\": 520 },\n    { \"date\": \"2026-10-26\", \"calories\": 860 }\n  ]\n}"
+      }]
+    },
+    {
+      "name": "Dietitian endpoint with consumer token (403)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{consumerToken}}" }],
+        "url": "{{baseUrl}}/api/patients"
+      },
+      "response": [{
+        "name": "Dietitian role required",
+        "status": "Forbidden",
+        "code": 403,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"error\": \"A dietitian role is required.\",\n  \"code\": \"FORBIDDEN\"\n}"
+      }]
+    },
+    {
+      "name": "Meals without token (401)",
+      "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/meals" },
+      "response": [{
+        "name": "Authentication required",
+        "status": "Unauthorized",
+        "code": 401,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"error\": \"Authentication required.\",\n  \"code\": \"AUTH_REQUIRED\"\n}"
+      }]
+    },
+    {
+      "name": "Invalid meal data (400)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{consumerToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"mealType\": \"lunch\",\n  \"foodName\": \"\",\n  \"portionSize\": \"1 plate\",\n  \"calories\": -1,\n  \"protein\": 10,\n  \"carbs\": 20,\n  \"fat\": 4\n}"
+        },
+        "url": "{{baseUrl}}/api/meals"
+      },
+      "response": [{
+        "name": "Food name is required",
+        "status": "Bad Request",
+        "code": 400,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"error\": \"Food name is required.\",\n  \"code\": \"INVALID_MEAL\"\n}"
+      }]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3001" },
+    { "key": "consumerToken", "value": "" },
+    { "key": "dietitianToken", "value": "" },
+    { "key": "patientId", "value": "" },
+    { "key": "mealId", "value": "" }
+  ]
+}
