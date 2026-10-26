@@ -1,7 +1,8 @@
 {
-  "name": "figma-make-app",
+  "name": "nutritrack-app",
   "private": true,
   "version": "1.0.0",
+  "description": "Track meals, calories, macros, steps, and active energy in one friendly health app, with meal history and wearable activity syncing for everyday wellness.",
   "type": "module",
   "scripts": {
     "dev": "vite",
