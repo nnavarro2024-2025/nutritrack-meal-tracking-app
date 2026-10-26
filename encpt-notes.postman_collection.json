@@ -1,0 +1,173 @@
+{
+  "info": {
+    "_postman_id": "7f496981-52ab-47f0-896c-66ee6060c8c5",
+    "name": "NutriTrack NCP Clinical Notes",
+    "description": "Uses the limited freely available NCP terms subset and CDR categories. See the terminology source note; domain and category mappings are assumptions.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Validate valid clinical note",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{{validNote}}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/notes/validate",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "notes",
+            "validate"
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "Valid note",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{validNote}}"
+            },
+            "url": "{{baseUrl}}/api/notes/validate"
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            }
+          ],
+          "body": "{\n  \"valid\": true\n}"
+        }
+      ]
+    },
+    {
+      "name": "Validate invalid clinical note",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{{invalidNote}}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/notes/validate",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "notes",
+            "validate"
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "Invalid note",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{invalidNote}}"
+            },
+            "url": "{{baseUrl}}/api/notes/validate"
+          },
+          "status": "Bad Request",
+          "code": 400,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            }
+          ],
+          "body": "{\n  \"valid\": false,\n  \"errors\": [\n    { \"path\": \"/providerId\", \"message\": \"must have required property 'providerId'\" },\n    { \"path\": \"/date\", \"message\": \"must match format \\\"date\\\"\" },\n    { \"path\": \"/assessment/domains/0/domain\", \"message\": \"must be equal to one of the allowed values\" },\n    { \"path\": \"/assessment/domains/0/items/0/term\", \"message\": \"must be equal to one of the allowed values\" },\n    { \"path\": \"/monitoringEvaluation/status\", \"message\": \"must be equal to one of the allowed values\" }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "Get terminology lists",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/terminology",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "terminology"
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "Freely available terminology subset",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/terminology"
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            }
+          ],
+          "body": "{\n  \"assessmentDomain\": [\n    \"food/nutrition-related history\",\n    \"anthropometric measurements\",\n    \"biochemical data and medical tests\",\n    \"nutrition-focused physical findings\",\n    \"client history\"\n  ],\n  \"assessmentMonitoringTerm\": [\n    \"Estimated energy intake\",\n    \"Estimated fluid intake\",\n    \"Estimated protein intake\",\n    \"Breastmilk/infant formula intake\",\n    \"Diet order\",\n    \"Enteral nutrition order\",\n    \"Parenteral nutrition order\",\n    \"Food intake\",\n    \"Enteral nutrition intake\",\n    \"Parenteral nutrition intake\",\n    \"Food and nutrition knowledge\",\n    \"Safe food availability\",\n    \"Height\",\n    \"Weight\",\n    \"Weight Change\",\n    \"Body mass index\",\n    \"Loss of subcutaneous fat\",\n    \"Muscle atrophy\",\n    \"Nutrition assessment, monitoring and evaluation tools\",\n    \"Intervention goal status\",\n    \"Nutrition diagnosis status\",\n    \"Estimated energy needs\",\n    \"Estimated protein needs\",\n    \"Estimated fluid needs\"\n  ],\n  \"diagnosisTerm\": [\n    \"Inadequate energy intake\",\n    \"Excessive energy intake\",\n    \"Inadequate oral intake\",\n    \"Inadequate protein intake\",\n    \"Inadequate fluid intake\",\n    \"Inadequate enteral nutrition infusion\",\n    \"Inadequate parenteral nutrition infusion\",\n    \"Swallowing difficulty\",\n    \"Unintended weight loss\",\n    \"Overweight/obesity\",\n    \"Malnutrition (undernutrition)\",\n    \"Starvation related malnutrition\",\n    \"Chronic disease or condition related malnutrition\",\n    \"Acute disease or injury related malnutrition\",\n    \"Food and nutrition related knowledge deficit\",\n    \"Food insecurity\",\n    \"Altered nutrition related laboratory values\",\n    \"Underweight\"\n  ],\n  \"diagnosisCode\": [\n    \"NC-1.1\",\n    \"NC-2.2\",\n    \"NC-3.1\",\n    \"NC-3.2\",\n    \"NC-3.3\"\n  ],\n  \"interventionCategory\": [\n    \"Nutrition Care Plan Development\",\n    \"Food and Nutrient Delivery\",\n    \"Nutrition Education\",\n    \"Nutrition Counseling\",\n    \"Coordination of Nutrition Care\",\n    \"Population Based Nutrition Action\",\n    \"Nutrition Intervention Encounter Context\"\n  ],\n  \"interventionTerm\": [\n    \"Identify nutrition intervention goal\",\n    \"Nutrition prescription\",\n    \"Modify composition of meals\",\n    \"Enteral nutrition\",\n    \"Parenteral nutrition/intravenous (IV) fluids\",\n    \"Nutrition supplement therapy\",\n    \"Content related nutrition education\",\n    \"Collaboration and referral of nutrition care\",\n    \"Discharge and transfer of nutrition care to other providers\"\n  ],\n  \"monitoringStatus\": [\n    \"not-started\",\n    \"in-progress\",\n    \"met\",\n    \"not-met\"\n  ],\n  \"assessmentDomainByTerm\": {\n    \"Estimated energy intake\": \"food/nutrition-related history\",\n    \"Estimated fluid intake\": \"food/nutrition-related history\",\n    \"Estimated protein intake\": \"food/nutrition-related history\",\n    \"Breastmilk/infant formula intake\": \"food/nutrition-related history\",\n    \"Diet order\": \"food/nutrition-related history\",\n    \"Enteral nutrition order\": \"food/nutrition-related history\",\n    \"Parenteral nutrition order\": \"food/nutrition-related history\",\n    \"Food intake\": \"food/nutrition-related history\",\n    \"Enteral nutrition intake\": \"food/nutrition-related history\",\n    \"Parenteral nutrition intake\": \"food/nutrition-related history\",\n    \"Food and nutrition knowledge\": \"food/nutrition-related history\",\n    \"Safe food availability\": \"food/nutrition-related history\",\n    \"Height\": \"anthropometric measurements\",\n    \"Weight\": \"anthropometric measurements\",\n    \"Weight Change\": \"anthropometric measurements\",\n    \"Body mass index\": \"anthropometric measurements\",\n    \"Loss of subcutaneous fat\": \"nutrition-focused physical findings\",\n    \"Muscle atrophy\": \"nutrition-focused physical findings\",\n    \"Nutrition assessment, monitoring and evaluation tools\": \"client history\",\n    \"Intervention goal status\": \"client history\",\n    \"Nutrition diagnosis status\": \"client history\",\n    \"Estimated energy needs\": \"food/nutrition-related history\",\n    \"Estimated protein needs\": \"food/nutrition-related history\",\n    \"Estimated fluid needs\": \"food/nutrition-related history\"\n  },\n  \"diagnosisCodeByTerm\": {\n    \"Swallowing difficulty\": \"NC-1.1\",\n    \"Altered nutrition related laboratory values\": \"NC-2.2\",\n    \"Underweight\": \"NC-3.1\",\n    \"Unintended weight loss\": \"NC-3.2\",\n    \"Overweight/obesity\": \"NC-3.3\"\n  },\n  \"interventionCategoryByTerm\": {\n    \"Identify nutrition intervention goal\": \"Nutrition Care Plan Development\",\n    \"Nutrition prescription\": \"Nutrition Care Plan Development\",\n    \"Modify composition of meals\": \"Food and Nutrient Delivery\",\n    \"Enteral nutrition\": \"Food and Nutrient Delivery\",\n    \"Parenteral nutrition/intravenous (IV) fluids\": \"Food and Nutrient Delivery\",\n    \"Nutrition supplement therapy\": \"Food and Nutrient Delivery\",\n    \"Content related nutrition education\": \"Nutrition Education\",\n    \"Collaboration and referral of nutrition care\": \"Coordination of Nutrition Care\",\n    \"Discharge and transfer of nutrition care to other providers\": \"Coordination of Nutrition Care\"\n  }\n}"
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001"
+    },
+    {
+      "key": "validNote",
+      "value": "{\n  \"patientId\": \"patient-example-001\",\n  \"providerId\": \"provider-example-001\",\n  \"date\": \"2026-10-26\",\n  \"assessment\": {\n    \"domains\": [\n      {\n        \"domain\": \"food/nutrition-related history\",\n        \"items\": [\n          {\n            \"term\": \"Food intake\",\n            \"value\": \"Approximately 3 meals daily\",\n            \"unit\": \"description\"\n          },\n          {\n            \"term\": \"Estimated energy intake\",\n            \"value\": 1800,\n            \"unit\": \"kcal/day\"\n          }\n        ]\n      },\n      {\n        \"domain\": \"anthropometric measurements\",\n        \"items\": [\n          {\n            \"term\": \"Weight\",\n            \"value\": 68.4,\n            \"unit\": \"kg\"\n          },\n          {\n            \"term\": \"Body mass index\",\n            \"value\": 22.8,\n            \"unit\": \"kg/m2\"\n          }\n        ]\n      },\n      {\n        \"domain\": \"nutrition-focused physical findings\",\n        \"items\": [\n          {\n            \"term\": \"Loss of subcutaneous fat\",\n            \"value\": \"No visible loss\",\n            \"unit\": \"description\"\n          }\n        ]\n      },\n      {\n        \"domain\": \"client history\",\n        \"items\": [\n          {\n            \"term\": \"Nutrition assessment, monitoring and evaluation tools\",\n            \"value\": \"24-hour dietary recall\",\n            \"unit\": \"tool\"\n          }\n        ]\n      }\n    ]\n  },\n  \"diagnosis\": {\n    \"problem\": {\n      \"term\": \"Inadequate energy intake\"\n    },\n    \"etiology\": \"limited meal planning during a busy work schedule\",\n    \"signsSymptoms\": [\n      \"reported intake below estimated needs\",\n      \"frequently skips lunch\"\n    ],\n    \"generatedSentence\": \"Inadequate energy intake related to limited meal planning during a busy work schedule as evidenced by reported intake below estimated needs; frequently skips lunch\"\n  },\n  \"intervention\": {\n    \"category\": \"Nutrition Care Plan Development\",\n    \"term\": \"Identify nutrition intervention goal\",\n    \"goal\": \"Plan and eat lunch on at least five workdays each week.\",\n    \"schedule\": {\n      \"frequency\": \"Review weekly\",\n      \"startDate\": \"2026-10-26\"\n    }\n  },\n  \"monitoringEvaluation\": {\n    \"indicator\": \"Intervention goal status\",\n    \"target\": \"Lunch planned and eaten on at least 5 workdays each week\",\n    \"measuredResult\": \"Baseline: lunch skipped on 3 workdays last week\",\n    \"status\": \"in-progress\"\n  }\n}"
+    },
+    {
+      "key": "invalidNote",
+      "value": "{\n  \"patientId\": \"patient-example-invalid\",\n  \"date\": \"not-a-date\",\n  \"assessment\": {\n    \"domains\": [\n      {\n        \"domain\": \"unknown assessment domain\",\n        \"items\": [\n          {\n            \"term\": \"Unknown assessment item\",\n            \"value\": 12,\n            \"unit\": \"unknown\"\n          }\n        ]\n      }\n    ]\n  },\n  \"diagnosis\": {\n    \"problem\": {\n      \"term\": \"Inadequate energy intake\"\n    },\n    \"etiology\": \"example etiology\",\n    \"signsSymptoms\": [\n      \"example sign\"\n    ],\n    \"generatedSentence\": \"This sentence does not match the diagnosis fields\"\n  },\n  \"intervention\": {\n    \"category\": \"Nutrition Care Plan Development\",\n    \"term\": \"Identify nutrition intervention goal\",\n    \"goal\": \"Example goal\",\n    \"schedule\": {\n      \"frequency\": \"Weekly\",\n      \"startDate\": \"2026-10-26\"\n    }\n  },\n  \"monitoringEvaluation\": {\n    \"indicator\": \"Intervention goal status\",\n    \"target\": \"Example target\",\n    \"measuredResult\": \"Example result\",\n    \"status\": \"unknown\"\n  }\n}"
+    }
+  ]
+}

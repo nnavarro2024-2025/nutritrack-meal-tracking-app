@@ -1,0 +1,161 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nutritrack.example/schemas/terminology.json",
+  "title": "Limited Nutrition Care Process terminology subset",
+  "description": "Terms from the Academy of Nutrition and Dietetics Freely Available NCP Terms (ncpro.org). This is a limited subset, not the full eNCPT, which is available by subscription. Intervention categories from the CDR Definition of Terms List, November 2024.",
+  "$comment": "Assessment domain groupings and intervention term-to-category assignments are assumptions to verify against the eNCPT/CDR terminology.",
+  "definitions": {
+    "assessmentDomain": {
+      "type": "string",
+      "enum": [
+        "food/nutrition-related history",
+        "anthropometric measurements",
+        "biochemical data and medical tests",
+        "nutrition-focused physical findings",
+        "client history"
+      ]
+    },
+    "assessmentMonitoringTerm": {
+      "type": "string",
+      "enum": [
+        "Estimated energy intake",
+        "Estimated fluid intake",
+        "Estimated protein intake",
+        "Breastmilk/infant formula intake",
+        "Diet order",
+        "Enteral nutrition order",
+        "Parenteral nutrition order",
+        "Food intake",
+        "Enteral nutrition intake",
+        "Parenteral nutrition intake",
+        "Food and nutrition knowledge",
+        "Safe food availability",
+        "Height",
+        "Weight",
+        "Weight Change",
+        "Body mass index",
+        "Loss of subcutaneous fat",
+        "Muscle atrophy",
+        "Nutrition assessment, monitoring and evaluation tools",
+        "Intervention goal status",
+        "Nutrition diagnosis status",
+        "Estimated energy needs",
+        "Estimated protein needs",
+        "Estimated fluid needs"
+      ]
+    },
+    "diagnosisTerm": {
+      "type": "string",
+      "enum": [
+        "Inadequate energy intake",
+        "Excessive energy intake",
+        "Inadequate oral intake",
+        "Inadequate protein intake",
+        "Inadequate fluid intake",
+        "Inadequate enteral nutrition infusion",
+        "Inadequate parenteral nutrition infusion",
+        "Swallowing difficulty",
+        "Unintended weight loss",
+        "Overweight/obesity",
+        "Malnutrition (undernutrition)",
+        "Starvation related malnutrition",
+        "Chronic disease or condition related malnutrition",
+        "Acute disease or injury related malnutrition",
+        "Food and nutrition related knowledge deficit",
+        "Food insecurity",
+        "Altered nutrition related laboratory values",
+        "Underweight"
+      ]
+    },
+    "diagnosisCode": {
+      "type": "string",
+      "enum": ["NC-1.1", "NC-2.2", "NC-3.1", "NC-3.2", "NC-3.3"]
+    },
+    "diagnosisCodeByTerm": {
+      "type": "object",
+      "properties": {
+        "Swallowing difficulty": { "const": "NC-1.1" },
+        "Altered nutrition related laboratory values": { "const": "NC-2.2" },
+        "Underweight": { "const": "NC-3.1" },
+        "Unintended weight loss": { "const": "NC-3.2" },
+        "Overweight/obesity": { "const": "NC-3.3" }
+      },
+      "additionalProperties": false
+    },
+    "interventionCategory": {
+      "type": "string",
+      "enum": [
+        "Nutrition Care Plan Development",
+        "Food and Nutrient Delivery",
+        "Nutrition Education",
+        "Nutrition Counseling",
+        "Coordination of Nutrition Care",
+        "Population Based Nutrition Action",
+        "Nutrition Intervention Encounter Context"
+      ]
+    },
+    "interventionTerm": {
+      "type": "string",
+      "enum": [
+        "Identify nutrition intervention goal",
+        "Nutrition prescription",
+        "Modify composition of meals",
+        "Enteral nutrition",
+        "Parenteral nutrition/intravenous (IV) fluids",
+        "Nutrition supplement therapy",
+        "Content related nutrition education",
+        "Collaboration and referral of nutrition care",
+        "Discharge and transfer of nutrition care to other providers"
+      ]
+    },
+    "interventionCategoryByTerm": {
+      "type": "object",
+      "properties": {
+        "Identify nutrition intervention goal": { "const": "Nutrition Care Plan Development" },
+        "Nutrition prescription": { "const": "Nutrition Care Plan Development" },
+        "Modify composition of meals": { "const": "Food and Nutrient Delivery" },
+        "Enteral nutrition": { "const": "Food and Nutrient Delivery" },
+        "Parenteral nutrition/intravenous (IV) fluids": { "const": "Food and Nutrient Delivery" },
+        "Nutrition supplement therapy": { "const": "Food and Nutrient Delivery" },
+        "Content related nutrition education": { "const": "Nutrition Education" },
+        "Collaboration and referral of nutrition care": { "const": "Coordination of Nutrition Care" },
+        "Discharge and transfer of nutrition care to other providers": { "const": "Coordination of Nutrition Care" }
+      },
+      "additionalProperties": false
+    },
+    "assessmentDomainByTerm": {
+      "type": "object",
+      "properties": {
+        "Estimated energy intake": { "const": "food/nutrition-related history" },
+        "Estimated fluid intake": { "const": "food/nutrition-related history" },
+        "Estimated protein intake": { "const": "food/nutrition-related history" },
+        "Breastmilk/infant formula intake": { "const": "food/nutrition-related history" },
+        "Diet order": { "const": "food/nutrition-related history" },
+        "Enteral nutrition order": { "const": "food/nutrition-related history" },
+        "Parenteral nutrition order": { "const": "food/nutrition-related history" },
+        "Food intake": { "const": "food/nutrition-related history" },
+        "Enteral nutrition intake": { "const": "food/nutrition-related history" },
+        "Parenteral nutrition intake": { "const": "food/nutrition-related history" },
+        "Food and nutrition knowledge": { "const": "food/nutrition-related history" },
+        "Safe food availability": { "const": "food/nutrition-related history" },
+        "Height": { "const": "anthropometric measurements" },
+        "Weight": { "const": "anthropometric measurements" },
+        "Weight Change": { "const": "anthropometric measurements" },
+        "Body mass index": { "const": "anthropometric measurements" },
+        "Loss of subcutaneous fat": { "const": "nutrition-focused physical findings" },
+        "Muscle atrophy": { "const": "nutrition-focused physical findings" },
+        "Nutrition assessment, monitoring and evaluation tools": { "const": "client history" },
+        "Intervention goal status": { "const": "client history" },
+        "Nutrition diagnosis status": { "const": "client history" },
+        "Estimated energy needs": { "const": "food/nutrition-related history" },
+        "Estimated protein needs": { "const": "food/nutrition-related history" },
+        "Estimated fluid needs": { "const": "food/nutrition-related history" }
+      },
+      "additionalProperties": false
+    },
+    "monitoringStatus": {
+      "type": "string",
+      "enum": ["not-started", "in-progress", "met", "not-met"]
+    }
+  }
+}

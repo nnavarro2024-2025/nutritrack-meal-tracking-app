@@ -1,0 +1,85 @@
+{
+  "patientId": "patient-example-001",
+  "providerId": "provider-example-001",
+  "date": "2026-10-26",
+  "assessment": {
+    "domains": [
+      {
+        "domain": "food/nutrition-related history",
+        "items": [
+          {
+            "term": "Food intake",
+            "value": "Approximately 3 meals daily",
+            "unit": "description"
+          },
+          {
+            "term": "Estimated energy intake",
+            "value": 1800,
+            "unit": "kcal/day"
+          }
+        ]
+      },
+      {
+        "domain": "anthropometric measurements",
+        "items": [
+          {
+            "term": "Weight",
+            "value": 68.4,
+            "unit": "kg"
+          },
+          {
+            "term": "Body mass index",
+            "value": 22.8,
+            "unit": "kg/m2"
+          }
+        ]
+      },
+      {
+        "domain": "nutrition-focused physical findings",
+        "items": [
+          {
+            "term": "Loss of subcutaneous fat",
+            "value": "No visible loss",
+            "unit": "description"
+          }
+        ]
+      },
+      {
+        "domain": "client history",
+        "items": [
+          {
+            "term": "Nutrition assessment, monitoring and evaluation tools",
+            "value": "24-hour dietary recall",
+            "unit": "tool"
+          }
+        ]
+      }
+    ]
+  },
+  "diagnosis": {
+    "problem": {
+      "term": "Inadequate energy intake"
+    },
+    "etiology": "limited meal planning during a busy work schedule",
+    "signsSymptoms": [
+      "reported intake below estimated needs",
+      "frequently skips lunch"
+    ],
+    "generatedSentence": "Inadequate energy intake related to limited meal planning during a busy work schedule as evidenced by reported intake below estimated needs; frequently skips lunch"
+  },
+  "intervention": {
+    "category": "Nutrition Care Plan Development",
+    "term": "Identify nutrition intervention goal",
+    "goal": "Plan and eat lunch on at least five workdays each week.",
+    "schedule": {
+      "frequency": "Review weekly",
+      "startDate": "2026-10-26"
+    }
+  },
+  "monitoringEvaluation": {
+    "indicator": "Intervention goal status",
+    "target": "Lunch planned and eaten on at least 5 workdays each week",
+    "measuredResult": "Baseline: lunch skipped on 3 workdays last week",
+    "status": "in-progress"
+  }
+}

@@ -83,7 +83,9 @@ h1, h2, h3, .logo, .calorie-number, .metric-card strong { font-family: "Manrope"
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .form-row.three { grid-template-columns: repeat(3, 1fr); }
 .has-error input { border-color: var(--danger); background: #fff9f8; }
+.charting-screen .field.has-error textarea { border-color: var(--danger); background: #fff9f8; }
 .field-error { color: var(--danger); font-size: 11px; }
+.required-marker { color: var(--danger) !important; font-weight: 700 !important; }
 .photo-upload { height: 145px; border: 1.5px dashed #a8c7b5; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--green-dark); overflow: hidden; cursor: pointer; background: #f7fbf8; }
 .photo-upload input { display: none; }
 .photo-upload > img { width: 100%; height: 100%; object-fit: cover; }
@@ -144,7 +146,7 @@ h1, h2, h3, .logo, .calorie-number, .metric-card strong { font-family: "Manrope"
 .skeleton.card { height: 180px; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 
-.bottom-nav { position: fixed; z-index: 20; bottom: 0; left: 0; right: 0; height: 76px; background: rgba(255,255,255,.95); border-top: 1px solid var(--line); backdrop-filter: blur(12px); display: grid; grid-template-columns: repeat(4,1fr); padding-bottom: env(safe-area-inset-bottom); }
+.bottom-nav { position: fixed; z-index: 20; bottom: 0; left: 0; right: 0; height: 76px; background: rgba(255,255,255,.95); border-top: 1px solid var(--line); backdrop-filter: blur(12px); display: grid; grid-template-columns: repeat(5,1fr); padding-bottom: env(safe-area-inset-bottom); }
 .bottom-nav button, .sidebar nav button { border: 0; background: transparent; color: #8a9791; display: flex; align-items: center; justify-content: center; }
 .bottom-nav button { flex-direction: column; gap: 4px; font-size: 10px; }
 .bottom-nav button.active { color: var(--green); }
@@ -164,6 +166,54 @@ h1, h2, h3, .logo, .calorie-number, .metric-card strong { font-family: "Manrope"
 .auth-switch { text-align: center; color: var(--muted); margin: 24px 0 12px !important; }
 .auth-switch button, .demo-link { border: 0; background: none; color: var(--green); font-weight: 700; padding: 4px; }
 .demo-link { display: block; margin: auto; font-size: 12px; text-decoration: underline; }
+
+.charting-screen { max-width: 1040px; }
+.charting-progress { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 16px; }
+.charting-progress-step { min-width: 0; min-height: 74px; padding: 10px 5px; border: 1px solid var(--line); border-radius: 14px; background: white; color: var(--muted); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 7px; }
+.charting-progress-step > span { width: 27px; height: 27px; display: grid; place-items: center; border-radius: 50%; background: #eef2ef; font-size: 12px; font-weight: 700; }
+.charting-progress-step small { max-width: 100%; text-align: center; font-size: 9px; line-height: 1.2; }
+.charting-progress-step.current { color: var(--green-dark); border-color: #91c8a5; background: #f5fbf6; }
+.charting-progress-step.current > span, .charting-progress-step.complete > span { color: white; background: var(--green); }
+.charting-progress-step.complete { color: var(--green-dark); }
+.charting-card { margin-bottom: 14px; padding: 18px; }
+.charting-card .section-heading { margin-bottom: 20px; }
+.charting-patient-grid, .charting-two-column { display: grid; grid-template-columns: 1fr; gap: 13px; }
+.charting-section-title { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 24px 0 13px; }
+.charting-section-title h3, .charting-finding-heading strong { font-family: "Manrope", sans-serif; font-size: 15px; }
+.charting-section-title p { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.charting-add { min-height: 42px; padding: 0 12px; white-space: nowrap; font-size: 12px; }
+.charting-empty, .charting-state { min-height: 170px; border: 1px dashed #b8cfc0; border-radius: 16px; background: #f8fbf8; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 12px; padding: 22px; color: var(--muted); text-align: center; }
+.charting-empty.has-error { border-color: var(--danger); }
+.charting-empty > p, .charting-state > p { font-size: 13px; }
+.charting-state { min-height: 320px; border: 1px solid var(--line); background: white; }
+.charting-state .skeleton { width: min(100%, 600px); height: 170px; }
+.charting-state-error h2, .charting-state h2 { font-size: 20px; color: var(--ink); }
+.charting-state-error p { max-width: 380px; line-height: 1.6; }
+.charting-finding-list, .charting-form-stack { display: grid; gap: 14px; }
+.charting-finding { min-width: 0; display: grid; gap: 13px; padding: 15px; background: #fbfdfb; border: 1px solid var(--line); border-radius: 16px; }
+.charting-finding-heading { display: flex; align-items: center; justify-content: space-between; }
+.charting-remove { border: 0; background: transparent; color: var(--danger); font-size: 12px; font-weight: 700; padding: 6px; }
+.charting-code-note { margin-top: -8px; color: var(--muted); font-size: 12px; }
+.pes-preview { border-left: 3px solid var(--green); border-radius: 0 12px 12px 0; background: #f1f8f3; padding: 15px; }
+.pes-preview p { color: var(--ink); font-size: 14px; line-height: 1.7; }
+.charting-actions { display: flex; justify-content: space-between; gap: 12px; margin: 14px 0 0; }
+.charting-actions > button:only-child, .charting-next { margin-left: auto; }
+.charting-step-error { color: var(--danger); font-size: 12px; font-weight: 600; margin-right: auto; align-self: center; }
+.charting-screen [aria-invalid="true"] { border-color: var(--danger); }
+.clinical-note-header { display: flex; align-items: center; gap: 13px; padding: 18px 0; border-bottom: 1px solid var(--line); }
+.clinical-note-header h3 { font-size: 17px; margin: 3px 0; }
+.clinical-note-header p, .clinical-note-muted { color: var(--muted); font-size: 12px; }
+.clinical-note-section { display: grid; gap: 9px; padding: 18px 0; border-bottom: 1px solid var(--line); }
+.clinical-note-section > p { color: var(--ink); font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
+.clinical-note-domain { display: grid; gap: 6px; padding-top: 3px; }
+.clinical-note-domain h3 { font-size: 13px; text-transform: capitalize; }
+.clinical-note-domain p { color: #42574d; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.clinical-note-domain p span { color: var(--muted); }
+.clinical-pes { background: #f4f9f5; border-radius: 12px; padding: 13px; }
+.review-heading { align-items: center; }
+.print-button { min-height: 42px; padding: 0 12px; font-size: 12px; white-space: nowrap; }
+.charting-api-errors { display: grid; gap: 7px; margin-top: 14px; padding: 14px; border-radius: 12px; background: #fff1ef; color: var(--danger); font-size: 12px; overflow-wrap: anywhere; }
+.review-error { margin-top: 4px; }
 
 @media (min-width: 760px) {
   .app-shell { display: grid; grid-template-columns: 230px 1fr; }
@@ -187,6 +237,12 @@ h1, h2, h3, .logo, .calorie-number, .metric-card strong { font-family: "Manrope"
   .meal-form > .primary-button { width: auto; justify-self: end; min-width: 190px; }
   .device-card { grid-template-columns: auto 1fr auto; }
   .device-card > button { grid-column: auto; width: auto; }
+  .charting-card { padding: 24px; }
+  .charting-patient-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .charting-two-column { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .charting-progress { gap: 10px; margin-bottom: 20px; }
+  .charting-progress-step { min-height: 82px; flex-direction: row; justify-content: flex-start; gap: 10px; padding: 12px; }
+  .charting-progress-step small { text-align: left; font-size: 12px; }
   .auth-shell { grid-template-columns: 1fr 1fr; }
   .auth-brand { display: flex; position: relative; overflow: hidden; flex-direction: column; justify-content: center; padding: 10%; color: white; background: linear-gradient(145deg, #183e31, #276447); }
   .auth-brand::after { content: ""; position: absolute; width: 420px; height: 420px; border: 1px solid rgba(255,255,255,.12); border-radius: 50%; right: -180px; bottom: -160px; box-shadow: 0 0 0 70px rgba(255,255,255,.03), 0 0 0 140px rgba(255,255,255,.025); }
@@ -199,9 +255,18 @@ h1, h2, h3, .logo, .calorie-number, .metric-card strong { font-family: "Manrope"
 }
 
 @media (max-width: 420px) {
+  .charting-actions { flex-wrap: wrap; }
+  .charting-step-error { width: 100%; order: -1; }
   .form-row.three { grid-template-columns: 1fr 1fr; }
   .form-row.three .field:last-child { grid-column: 1 / -1; }
   .meal-card { grid-template-columns: 62px minmax(0,1fr); }
   .meal-card > img, .meal-placeholder { width: 62px; height: 62px; }
   .meal-cal { display: none; }
+}
+
+@media print {
+  body, .app-shell, .main-area { background: white; }
+  .sidebar, .bottom-nav, .state-picker, .charting-progress, .charting-actions, .print-button { display: none !important; }
+  .charting-screen { width: 100%; max-width: none; padding: 0; }
+  .clinical-note-review { border: 0; box-shadow: none; padding: 0; }
 }

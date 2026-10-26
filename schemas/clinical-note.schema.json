@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nutritrack.example/schemas/clinical-note.schema.json",
+  "title": "Nutrition Care Process clinical note",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "patientId",
+    "providerId",
+    "date",
+    "assessment",
+    "diagnosis",
+    "intervention",
+    "monitoringEvaluation"
+  ],
+  "properties": {
+    "patientId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "providerId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "assessment": {
+      "$ref": "https://nutritrack.example/schemas/assessment.schema.json"
+    },
+    "diagnosis": {
+      "$ref": "https://nutritrack.example/schemas/diagnosis.schema.json"
+    },
+    "intervention": {
+      "$ref": "https://nutritrack.example/schemas/intervention.schema.json"
+    },
+    "monitoringEvaluation": {
+      "$ref": "https://nutritrack.example/schemas/monitoring-evaluation.schema.json"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nutritrack.example/schemas/monitoring-evaluation.schema.json",
+  "title": "Nutrition monitoring and evaluation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["indicator", "target", "measuredResult", "status"],
+  "properties": {
+    "indicator": {
+      "$ref": "https://nutritrack.example/schemas/terminology.json#/definitions/assessmentMonitoringTerm"
+    },
+    "target": {
+      "anyOf": [
+        { "type": "string", "minLength": 1 },
+        { "type": "number" }
+      ]
+    },
+    "measuredResult": {
+      "anyOf": [
+        { "type": "string" },
+        { "type": "number" }
+      ]
+    },
+    "status": {
+      "$ref": "https://nutritrack.example/schemas/terminology.json#/definitions/monitoringStatus"
+    }
+  }
+}

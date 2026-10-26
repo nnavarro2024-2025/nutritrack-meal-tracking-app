@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nutritrack.example/schemas/assessment.schema.json",
+  "title": "Nutrition assessment",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["domains"],
+  "properties": {
+    "domains": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["domain", "items"],
+        "properties": {
+          "domain": {
+            "$ref": "https://nutritrack.example/schemas/terminology.json#/definitions/assessmentDomain"
+          },
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["term", "value", "unit"],
+              "properties": {
+                "term": {
+                  "$ref": "https://nutritrack.example/schemas/terminology.json#/definitions/assessmentMonitoringTerm"
+                },
+                "code": {
+                  "type": "string",
+                  "maxLength": 0,
+                  "description": "No assessment codes are provided in the freely available term subset."
+                },
+                "value": {
+                  "anyOf": [
+                    { "type": "string" },
+                    { "type": "number" },
+                    { "type": "boolean" }
+                  ]
+                },
+                "unit": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

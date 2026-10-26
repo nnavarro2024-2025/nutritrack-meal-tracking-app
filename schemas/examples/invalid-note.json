@@ -1,0 +1,41 @@
+{
+  "patientId": "patient-example-invalid",
+  "date": "not-a-date",
+  "assessment": {
+    "domains": [
+      {
+        "domain": "unknown assessment domain",
+        "items": [
+          {
+            "term": "Unknown assessment item",
+            "value": 12,
+            "unit": "unknown"
+          }
+        ]
+      }
+    ]
+  },
+  "diagnosis": {
+    "problem": {
+      "term": "Inadequate energy intake"
+    },
+    "etiology": "example etiology",
+    "signsSymptoms": ["example sign"],
+    "generatedSentence": "This sentence does not match the diagnosis fields"
+  },
+  "intervention": {
+    "category": "Nutrition Care Plan Development",
+    "term": "Identify nutrition intervention goal",
+    "goal": "Example goal",
+    "schedule": {
+      "frequency": "Weekly",
+      "startDate": "2026-10-26"
+    }
+  },
+  "monitoringEvaluation": {
+    "indicator": "Intervention goal status",
+    "target": "Example target",
+    "measuredResult": "Example result",
+    "status": "unknown"
+  }
+}

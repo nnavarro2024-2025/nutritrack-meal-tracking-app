@@ -4,9 +4,10 @@ import {
   Meal,
   todaySummary,
 } from "./data/mockData"
+import Charting from "./components/Charting"
 import { fetchDailyWearableData, fetchWeeklyWearableData, WearableDailyData } from "./services/wearableService"
 
-type Tab = "home" | "log" | "history" | "wearable"
+type Tab = "home" | "log" | "history" | "wearable" | "charting"
 type ViewState = "ready" | "loading" | "empty" | "error"
 
 const Icon = ({ name, size = 22 }: { name: string; size?: number }) => {
@@ -20,6 +21,7 @@ const Icon = ({ name, size = 22 }: { name: string; size?: number }) => {
     camera: <><path d="M4 7h3l2-2h6l2 2h3v12H4Z" /><circle cx="12" cy="13" r="3" /></>,
     user: <><circle cx="12" cy="8" r="4" /><path d="M4 21c1-5 4-7 8-7s7 2 8 7" /></>,
     check: <path d="m5 12 4 4L19 6" />,
+    chart: <><path d="M4 19V5" /><path d="M4 19h17" /><path d="m7 15 4-4 3 2 5-6" /></>,
     arrow: <path d="m9 18 6-6-6-6" />,
     heart: <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z" />,
   }
@@ -268,6 +270,6 @@ export default function App() {
   const [meals, setMeals] = useState(initialMeals)
   useEffect(() => { window.scrollTo(0, 0) }, [tab])
   if (!authenticated) return <Auth onDone={() => setAuthenticated(true)} />
-  const tabs: { id: Tab; label: string; icon: string }[] = [{ id: "home", label: "Today", icon: "home" }, { id: "log", label: "Log meal", icon: "plus" }, { id: "history", label: "History", icon: "list" }, { id: "wearable", label: "Wearable", icon: "watch" }]
-  return <div className="app-shell"><aside className="sidebar"><div className="sidebar-logo"><div className="brand-mark"><Icon name="heart" /></div><span>NutriTrack</span></div><nav>{tabs.map((item) => <button key={item.id} className={tab === item.id ? "active" : ""} onClick={() => setTab(item.id)}><Icon name={item.icon} /><span>{item.label}</span></button>)}</nav><div className="profile"><div className="avatar"><Icon name="user" /></div><div><strong>Alex Morgan</strong><span>Free plan</span></div></div></aside><div className="main-area">{tab === "home" && <Dashboard goToLog={() => setTab("log")} />}{tab === "log" && <MealLog onSave={(meal) => { setMeals([meal, ...meals]); setTab("history") }} />}{tab === "history" && <History meals={meals} />}{tab === "wearable" && <Wearable />}</div><nav className="bottom-nav">{tabs.map((item) => <button key={item.id} className={tab === item.id ? "active" : ""} onClick={() => setTab(item.id)}><Icon name={item.icon} /><span>{item.label}</span></button>)}</nav></div>
+  const tabs: { id: Tab; label: string; icon: string }[] = [{ id: "home", label: "Today", icon: "home" }, { id: "log", label: "Log meal", icon: "plus" }, { id: "history", label: "History", icon: "list" }, { id: "wearable", label: "Wearable", icon: "watch" }, { id: "charting", label: "Charting", icon: "chart" }]
+  return <div className="app-shell"><aside className="sidebar"><div className="sidebar-logo"><div className="brand-mark"><Icon name="heart" /></div><span>NutriTrack</span></div><nav>{tabs.map((item) => <button key={item.id} className={tab === item.id ? "active" : ""} onClick={() => setTab(item.id)}><Icon name={item.icon} /><span>{item.label}</span></button>)}</nav><div className="profile"><div className="avatar"><Icon name="user" /></div><div><strong>Alex Morgan</strong><span>Free plan</span></div></div></aside><div className="main-area">{tab === "home" && <Dashboard goToLog={() => setTab("log")} />}{tab === "log" && <MealLog onSave={(meal) => { setMeals([meal, ...meals]); setTab("history") }} />}{tab === "history" && <History meals={meals} />}{tab === "wearable" && <Wearable />}{tab === "charting" && <Charting />}</div><nav className="bottom-nav">{tabs.map((item) => <button key={item.id} className={tab === item.id ? "active" : ""} onClick={() => setTab(item.id)}><Icon name={item.icon} /><span>{item.label}</span></button>)}</nav></div>
 }

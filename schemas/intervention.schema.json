@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nutritrack.example/schemas/intervention.schema.json",
+  "title": "Nutrition intervention",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["category", "term", "goal", "schedule"],
+  "properties": {
+    "category": {
+      "$ref": "https://nutritrack.example/schemas/terminology.json#/definitions/interventionCategory"
+    },
+    "term": {
+      "$ref": "https://nutritrack.example/schemas/terminology.json#/definitions/interventionTerm"
+    },
+    "goal": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schedule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frequency", "startDate"],
+      "properties": {
+        "frequency": {
+          "type": "string",
+          "minLength": 1
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date"
+        }
+      }
+    }
+  }
+}
