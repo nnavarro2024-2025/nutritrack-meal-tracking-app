@@ -43,9 +43,13 @@ const mealFields = ["mealType", "foodName", "portionSize", "calories", "protein"
 
 function parseMealInput(body) {
   const result = { ...body }
-  for (const field of ["calories", "protein", "carbs", "fat"]) {
-    if (typeof result[field] === "string" && result[field].trim() !== "") {
-      result[field] = Number(result[field])
+  for (const field of ["calories", "protein", "carbs", "fat", "sodiumMg", "fiberG", "addedSugarG"]) {
+    if (typeof result[field] === "string") {
+      if (result[field].trim() === "") {
+        delete result[field]
+      } else {
+        result[field] = Number(result[field])
+      }
     }
   }
   return result
@@ -64,6 +68,14 @@ function validateMealInput(input) {
   for (const field of ["calories", "protein", "carbs", "fat"]) {
     if (input[field] === undefined || input[field] === "" || !Number.isFinite(input[field])) {
       return `${field} must be a valid number.`
+    }
+    for (const field of ["sodiumMg", "fiberG", "addedSugarG"]) {
+      if (input[field] !== undefined && !Number.isFinite(input[field])) {
+        return `${field} must be a valid number.`
+      }
+      if (input[field] !== undefined && input[field] < 0) {
+        return `${field} cannot be negative.`
+      }
     }
     if (input[field] < 0) return `${field} cannot be negative.`
   }
@@ -84,6 +96,9 @@ function serializeMeal(meal) {
     protein: meal.protein,
     carbs: meal.carbs,
     fat: meal.fat,
+    ...(meal.sodiumMg !== undefined ? { sodiumMg: meal.sodiumMg } : {}),
+    ...(meal.fiberG !== undefined ? { fiberG: meal.fiberG } : {}),
+    ...(meal.addedSugarG !== undefined ? { addedSugarG: meal.addedSugarG } : {}),
     notes: meal.notes || "",
     loggedAt: meal.loggedAt.toISOString(),
     photoUrl: meal.photoPath ? `/api/meals/${meal._id}/photo` : null,
@@ -129,6 +144,9 @@ router.post("/", authenticateToken, requireRole("consumer"), upload.single("phot
       protein: input.protein,
       carbs: input.carbs,
       fat: input.fat,
+      ...(input.sodiumMg !== undefined ? { sodiumMg: input.sodiumMg } : {}),
+      ...(input.fiberG !== undefined ? { fiberG: input.fiberG } : {}),
+      ...(input.addedSugarG !== undefined ? { addedSugarG: input.addedSugarG } : {}),
       notes: input.notes?.trim() || "",
       ...(request.file ? { photoPath: request.file.filename } : {}),
       loggedAt: new Date(),

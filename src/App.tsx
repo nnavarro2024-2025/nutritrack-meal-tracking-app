@@ -1,7 +1,17 @@
 import { FormEvent, ReactNode, useEffect, useState } from "react"
 import { todaySummary } from "./data/mockData"
 import Charting from "./components/Charting"
-import { fetchDailyWearableData, fetchWeeklyWearableData, WearableDailyData } from "./services/wearableService"
+import ClinicalNoteView from "./components/ClinicalNoteView"
+import {
+  fetchDailyWearableData,
+  fetchWeeklyWearableData,
+  getLastSyncedWearableSource,
+  getSelectedWearableSource,
+  rememberSelectedWearableSource,
+  rememberSyncedWearableSource,
+  WearableDailyData,
+  WearableSource,
+} from "./services/wearableService"
 import {
   CreateMealInput,
   MealRecord,
@@ -15,6 +25,19 @@ import {
   fetchPatients,
 } from "./services/mealService"
 import {
+  DietaryPolicy,
+  PolicyCheckResult,
+  PolicyMissingDataError,
+  fetchDietaryPolicies,
+  runPatientPolicyCheck,
+} from "./services/policyService"
+import {
+  SavedClinicalNote,
+  fetchMyNotes,
+  fetchPatientNotes,
+  fetchSavedNote,
+} from "./services/notesService"
+import {
   AuthApiError,
   AuthUser,
   UserRole,
@@ -25,7 +48,7 @@ import {
   register as registerUser,
 } from "./services/authService"
 
-type Tab = "home" | "log" | "history" | "wearable" | "patients" | "charting"
+type Tab = "home" | "log" | "history" | "wearable" | "careplan" | "patients" | "charting"
 type ViewState = "ready" | "loading" | "empty" | "error"
 
 const Icon = ({ name, size = 22 }: { name: string; size?: number }) => {
@@ -94,6 +117,7 @@ function isToday(value: string) {
 function Dashboard({ goToLog, userName }: { goToLog: () => void; userName: string }) {
   const [state, setState] = useState<ViewState>("loading")
   const [wearableData, setWearableData] = useState<WearableDailyData | null>(null)
+  const [wearableSource] = useState<WearableSource>(() => getLastSyncedWearableSource())
   const [meals, setMeals] = useState<MealRecord[]>([])
   const [mealState, setMealState] = useState<ViewState>("loading")
   const [mealRefresh, setMealRefresh] = useState(0)
@@ -101,7 +125,7 @@ function Dashboard({ goToLog, userName }: { goToLog: () => void; userName: strin
   useEffect(() => {
     let active = true
     setState("loading")
-    fetchDailyWearableData()
+    fetchDailyWearableData(undefined, wearableSource)
       .then((data) => {
         if (active) {
           setWearableData(data)
@@ -112,7 +136,7 @@ function Dashboard({ goToLog, userName }: { goToLog: () => void; userName: strin
         if (active) setState("error")
       })
     return () => { active = false }
-  }, [refreshKey])
+  }, [refreshKey, wearableSource])
   useEffect(() => {
     let active = true
     setMealState("loading")
@@ -172,10 +196,12 @@ function Dashboard({ goToLog, userName }: { goToLog: () => void; userName: strin
 }
 
 const fields = ["food", "portion", "calories", "protein", "carbs", "fat"] as const
-type MealForm = Record<(typeof fields)[number], string> & { type: string; notes: string }
+type OptionalNutrientField = "sodiumMg" | "fiberG" | "addedSugarG"
+type MealForm = Record<(typeof fields)[number], string> &
+  Record<OptionalNutrientField, string> & { type: string; notes: string }
 
 function MealLog({ onSave }: { onSave: (meal: CreateMealInput) => Promise<void> }) {
-  const blank: MealForm = { type: "breakfast", food: "", portion: "", calories: "", protein: "", carbs: "", fat: "", notes: "" }
+  const blank: MealForm = { type: "breakfast", food: "", portion: "", calories: "", protein: "", carbs: "", fat: "", sodiumMg: "", fiberG: "", addedSugarG: "", notes: "" }
   const [form, setForm] = useState(blank)
   const [errors, setErrors] = useState<Partial<Record<keyof MealForm, string>>>({})
   const [preview, setPreview] = useState("")
@@ -191,6 +217,11 @@ function MealLog({ onSave }: { onSave: (meal: CreateMealInput) => Promise<void> 
     fields.slice(2).forEach((key) => {
       if (!Number.isFinite(Number(form[key])) || Number(form[key]) < 0) next[key] = "Enter a valid non-negative amount"
     })
+    for (const key of ["sodiumMg", "fiberG", "addedSugarG"] as const) {
+      if (form[key].trim() && (!Number.isFinite(Number(form[key])) || Number(form[key]) < 0)) {
+        next[key] = "Enter a valid non-negative amount or leave it blank"
+      }
+    }
     setErrors(next)
     setFormError("")
     if (Object.keys(next).length) return
@@ -204,6 +235,9 @@ function MealLog({ onSave }: { onSave: (meal: CreateMealInput) => Promise<void> 
         protein: Number(form.protein),
         carbs: Number(form.carbs),
         fat: Number(form.fat),
+        ...(form.sodiumMg.trim() ? { sodiumMg: Number(form.sodiumMg) } : {}),
+        ...(form.fiberG.trim() ? { fiberG: Number(form.fiberG) } : {}),
+        ...(form.addedSugarG.trim() ? { addedSugarG: Number(form.addedSugarG) } : {}),
         notes: form.notes.trim(),
         photo,
       })
@@ -225,6 +259,11 @@ function MealLog({ onSave }: { onSave: (meal: CreateMealInput) => Promise<void> 
           <TextField label="Food name" name="food" placeholder="e.g. Grilled chicken salad" form={form} update={update} error={errors.food} />
           <div className="form-row"><TextField label="Portion size" name="portion" placeholder="e.g. 1 bowl" form={form} update={update} error={errors.portion} /><TextField label="Calories" name="calories" placeholder="0" type="number" form={form} update={update} error={errors.calories} /></div>
           <div className="form-row three"><TextField label="Protein (g)" name="protein" placeholder="0" type="number" form={form} update={update} error={errors.protein} /><TextField label="Carbs (g)" name="carbs" placeholder="0" type="number" form={form} update={update} error={errors.carbs} /><TextField label="Fat (g)" name="fat" placeholder="0" type="number" form={form} update={update} error={errors.fat} /></div>
+          <div className="form-row three">
+            <TextField label="Sodium (mg)" name="sodiumMg" placeholder="Optional" type="number" form={form} update={update} error={errors.sodiumMg} optional />
+            <TextField label="Fiber (g)" name="fiberG" placeholder="Optional" type="number" form={form} update={update} error={errors.fiberG} optional />
+            <TextField label="Added sugar (g)" name="addedSugarG" placeholder="Optional" type="number" form={form} update={update} error={errors.addedSugarG} optional />
+          </div>
           <div className="field"><label htmlFor="notes">Notes <span>Optional</span></label><textarea id="notes" rows={3} placeholder="How did it make you feel?" value={form.notes} onChange={(e) => update("notes", e.target.value)} /></div>
           <label className="photo-upload">
             {preview ? <img src={preview} alt="Meal preview" /> : <><div className="upload-icon"><Icon name="camera" /></div><strong>Add a meal photo</strong><span>PNG or JPG, up to 5MB</span></>}
@@ -251,8 +290,16 @@ function MealLog({ onSave }: { onSave: (meal: CreateMealInput) => Promise<void> 
   )
 }
 
-function TextField({ label, name, placeholder, type = "text", form, update, error }: { label: string; name: keyof MealForm; placeholder: string; type?: string; form: MealForm; update: (k: keyof MealForm, v: string) => void; error?: string }) {
-  return <div className={`field ${error ? "has-error" : ""}`}><label htmlFor={name}>{label}</label><input id={name} type={type} min="0" placeholder={placeholder} value={form[name]} onChange={(e) => update(name, e.target.value)} />{error && <span className="field-error">{error}</span>}</div>
+function TextField({ label, name, placeholder, type = "text", form, update, error, optional = false }: { label: string; name: keyof MealForm; placeholder: string; type?: string; form: MealForm; update: (k: keyof MealForm, v: string) => void; error?: string; optional?: boolean }) {
+  return <div className={`field ${error ? "has-error" : ""}`}><label htmlFor={name}>{label}{optional && <span>Optional</span>}</label><input id={name} type={type} min="0" placeholder={placeholder} value={form[name]} onChange={(e) => update(name, e.target.value)} />{error && <span className="field-error">{error}</span>}</div>
+}
+
+function mealPolicyNutrients(meal: MealRecord) {
+  return [
+    meal.sodiumMg !== undefined ? `Sodium ${meal.sodiumMg} mg` : "",
+    meal.fiberG !== undefined ? `Fiber ${meal.fiberG} g` : "",
+    meal.addedSugarG !== undefined ? `Added sugar ${meal.addedSugarG} g` : "",
+  ].filter(Boolean).join(" · ")
 }
 
 function MealPhoto({ meal }: { meal: MealRecord }) {
@@ -313,17 +360,20 @@ function History() {
     <Screen title="Meal history" eyebrow="Your recent meals" action={<StatePicker value={previewState} onChange={setPreviewState} />}>
       {state !== "ready" ? <StatusState type={state} onRetry={retry} /> : <div className="history-list">
         <div className="history-date"><span>All meals</span><small>{meals.length} meals</small></div>
-        {meals.map((meal) => <article className="meal-card" key={meal.id}><MealPhoto meal={meal} /><div className="meal-copy"><div><span className="meal-type">{meal.mealType}</span><small>{mealDisplayTime(meal)}</small></div><h3>{meal.foodName}</h3><p>{meal.portionSize} · {meal.protein}g P · {meal.carbs}g C · {meal.fat}g F</p>{meal.notes && <p>{meal.notes}</p>}</div><strong className="meal-cal">{meal.calories}<small>kcal</small></strong></article>)}
+        {meals.map((meal) => <article className="meal-card" key={meal.id}><MealPhoto meal={meal} /><div className="meal-copy"><div><span className="meal-type">{meal.mealType}</span><small>{mealDisplayTime(meal)}</small></div><h3>{meal.foodName}</h3><p>{meal.portionSize} · {meal.protein}g P · {meal.carbs}g C · {meal.fat}g F</p>{mealPolicyNutrients(meal) && <p>{mealPolicyNutrients(meal)}</p>}{meal.notes && <p>{meal.notes}</p>}</div><strong className="meal-cal">{meal.calories}<small>kcal</small></strong></article>)}
       </div>}
     </Screen>
   )
 }
 
-function PatientsPage({ onStartChart }: { onStartChart: () => void }) {
+function PatientsPage({ provider }: { provider: AuthUser }) {
   const [patients, setPatients] = useState<Patient[]>([])
   const [state, setState] = useState<ViewState>("loading")
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
   const [retryKey, setRetryKey] = useState(0)
+  const [charting, setCharting] = useState(false)
+  const [notesRefreshKey, setNotesRefreshKey] = useState(0)
+  const [savedNotice, setSavedNotice] = useState("")
 
   useEffect(() => {
     let active = true
@@ -338,8 +388,34 @@ function PatientsPage({ onStartChart }: { onStartChart: () => void }) {
     return () => { active = false }
   }, [retryKey])
 
+  if (charting && selectedPatient) {
+    return (
+      <Charting
+        key={`${selectedPatient.id}-${provider.id}`}
+        patient={selectedPatient}
+        provider={provider}
+        onBack={() => setCharting(false)}
+        onSaved={() => {
+          setCharting(false)
+          setNotesRefreshKey((key) => key + 1)
+          setSavedNotice("Clinical note saved successfully.")
+        }}
+      />
+    )
+  }
+
   if (selectedPatient) {
-    return <PatientDetails patient={selectedPatient} onBack={() => setSelectedPatient(null)} onStartChart={onStartChart} />
+    return (
+      <PatientDetails
+        key={`${selectedPatient.id}-${notesRefreshKey}`}
+        patient={selectedPatient}
+        onBack={() => { setSelectedPatient(null); setSavedNotice("") }}
+        onStartChart={() => { setSavedNotice(""); setCharting(true) }}
+        refreshKey={notesRefreshKey}
+        savedNotice={savedNotice}
+        providerName={provider.name}
+      />
+    )
   }
 
   return (
@@ -365,31 +441,62 @@ function PatientDetails({
   patient,
   onBack,
   onStartChart,
+  refreshKey,
+  savedNotice,
+  providerName,
 }: {
   patient: Patient
   onBack: () => void
   onStartChart: () => void
+  refreshKey: number
+  savedNotice: string
+  providerName: string
 }) {
   const [summary, setSummary] = useState<PatientSummary | null>(null)
   const [meals, setMeals] = useState<MealRecord[]>([])
+  const [notes, setNotes] = useState<SavedClinicalNote[]>([])
   const [state, setState] = useState<ViewState>("loading")
   const [retryKey, setRetryKey] = useState(0)
+  const [selectedNote, setSelectedNote] = useState<SavedClinicalNote | null>(null)
+  const [noteState, setNoteState] = useState<"ready" | "loading" | "error">("ready")
+  const [noteError, setNoteError] = useState("")
 
   useEffect(() => {
     let active = true
     setState("loading")
-    Promise.all([fetchPatientSummary(patient.id), fetchPatientMeals(patient.id)])
-      .then(([patientSummary, patientMeals]) => {
+    Promise.all([fetchPatientSummary(patient.id), fetchPatientMeals(patient.id), fetchPatientNotes(patient.id)])
+      .then(([patientSummary, patientMeals, patientNotes]) => {
         if (!active) return
         setSummary(patientSummary)
         setMeals(patientMeals)
+        setNotes(patientNotes)
         setState("ready")
       })
       .catch(() => {
         if (active) setState("error")
       })
     return () => { active = false }
-  }, [patient.id, retryKey])
+  }, [patient.id, refreshKey, retryKey])
+
+  const openNote = async (noteId: string) => {
+    setNoteState("loading")
+    setNoteError("")
+    try {
+      setSelectedNote(await fetchSavedNote(noteId))
+      setNoteState("ready")
+    } catch (error) {
+      setNoteError(error instanceof Error ? error.message : "Could not load this clinical note.")
+      setNoteState("error")
+    }
+  }
+
+  if (selectedNote) {
+    return (
+      <Screen title="Saved clinical note" eyebrow={patient.name} action={<button className="secondary-button" onClick={() => setSelectedNote(null)}>Back to patient</button>}>
+        <ClinicalNoteView savedNote={selectedNote} patientName={patient.name} providerName={providerName} onBack={() => setSelectedNote(null)} />
+      </Screen>
+    )
+  }
 
   return (
     <Screen
@@ -398,6 +505,7 @@ function PatientDetails({
       action={<button className="secondary-button" onClick={onBack}>Back to patients</button>}
     >
       {state !== "ready" ? <StatusState type={state} onRetry={() => setRetryKey((key) => key + 1)} /> : summary && <>
+        {savedNotice && <div className="success-banner" role="status"><span>✓</span><div><strong>{savedNotice}</strong><span>The note is saved in this patient’s record.</span></div></div>}
         <section className="card patient-today-card">
           <div className="section-heading"><div><span className="section-kicker">TODAY</span><h2>Nutrition totals</h2></div><strong className="patient-calories">{summary.today.calories.toLocaleString()} kcal</strong></div>
           <div className="patient-macros">
@@ -424,11 +532,25 @@ function PatientDetails({
             {meals.map((meal) => (
               <article className="meal-card" key={meal.id}>
                 <MealPhoto meal={meal} />
-                <div className="meal-copy"><div><span className="meal-type">{meal.mealType}</span><small>{mealDisplayTime(meal)}</small></div><h3>{meal.foodName}</h3><p>{meal.portionSize} · {meal.protein}g P · {meal.carbs}g C · {meal.fat}g F</p>{meal.notes && <p>{meal.notes}</p>}</div>
+                <div className="meal-copy"><div><span className="meal-type">{meal.mealType}</span><small>{mealDisplayTime(meal)}</small></div><h3>{meal.foodName}</h3><p>{meal.portionSize} · {meal.protein}g P · {meal.carbs}g C · {meal.fat}g F</p>{mealPolicyNutrients(meal) && <p>{mealPolicyNutrients(meal)}</p>}{meal.notes && <p>{meal.notes}</p>}</div>
                 <strong className="meal-cal">{meal.calories}<small>kcal</small></strong>
               </article>
             ))}
           </div> : <section className="status-card"><h3>No meals logged yet</h3><p>This patient’s meal history will appear here.</p></section>}
+        </section>
+        <PolicyCheckPanel patientId={patient.id} />
+        <section className="patient-notes-section">
+          <div className="section-heading"><div><span className="section-kicker">CLINICAL RECORD</span><h2>Notes</h2></div><span className="fresh-pill">{notes.length} notes</span></div>
+          {noteState === "loading" && <div className="charting-context-state"><div className="skeleton wide" /><span>Loading saved note…</span></div>}
+          {noteState === "error" && <div className="charting-api-errors" role="alert"><p>{noteError}</p></div>}
+          {notes.length ? <div className="saved-note-list">
+            {notes.map((savedNote) => (
+              <button type="button" className="saved-note-row card" key={savedNote.id} onClick={() => { void openNote(savedNote.id) }} disabled={noteState === "loading"}>
+                <span><strong>{savedNote.content.diagnosis.problem.term}</strong><small>{new Date(savedNote.content.date).toLocaleDateString()} · Saved {new Date(savedNote.createdAt).toLocaleDateString()}</small></span>
+                <Icon name="arrow" />
+              </button>
+            ))}
+          </div> : <section className="status-card"><h3>No saved notes yet</h3><p>Saved clinical notes for this patient will appear here.</p></section>}
         </section>
         <button className="primary-button patient-start-chart" onClick={onStartChart}>Start chart <Icon name="arrow" /></button>
       </>}
@@ -436,38 +558,212 @@ function PatientDetails({
   )
 }
 
-function Wearable() {
+function getLocalDateInputValue() {
+  const date = new Date()
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+}
+
+function formatPolicyValue(value: number | number[]) {
+  return Array.isArray(value) ? `${value[0]}–${value[1]}` : String(value)
+}
+
+function PolicyCheckPanel({ patientId }: { patientId: string }) {
+  const [policies, setPolicies] = useState<DietaryPolicy[]>([])
+  const [policiesState, setPoliciesState] = useState<"loading" | "ready" | "error">("loading")
+  const [policyRetryKey, setPolicyRetryKey] = useState(0)
+  const [policyId, setPolicyId] = useState("national_dietary_guidelines")
+  const [date, setDate] = useState(getLocalDateInputValue)
+  const [checkState, setCheckState] = useState<"idle" | "loading" | "result" | "empty" | "missing" | "error">("idle")
+  const [result, setResult] = useState<PolicyCheckResult | null>(null)
+  const [message, setMessage] = useState("")
+
+  useEffect(() => {
+    let active = true
+    setPoliciesState("loading")
+    fetchDietaryPolicies().then((items) => {
+      if (!active) return
+      setPolicies(items)
+      setPoliciesState("ready")
+      if (items.length && !items.some((item) => item.id === policyId)) {
+        setPolicyId(items[0].id)
+      }
+    }).catch((error: unknown) => {
+      if (!active) return
+      setMessage(error instanceof Error ? error.message : "Could not load dietary policies.")
+      setPoliciesState("error")
+    })
+    return () => { active = false }
+  }, [policyRetryKey])
+
+  const runCheck = async () => {
+    setCheckState("loading")
+    setMessage("")
+    setResult(null)
+    try {
+      const response = await runPatientPolicyCheck(patientId, policyId, date)
+      if ("noMeals" in response) {
+        setMessage(response.message)
+        setCheckState("empty")
+      } else {
+        setResult(response)
+        setCheckState("result")
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not run the policy check.")
+      setCheckState(error instanceof PolicyMissingDataError ? "missing" : "error")
+    }
+  }
+
+  return (
+    <section className="card policy-check-section">
+      <div className="section-heading">
+        <div><span className="section-kicker">DIETARY POLICY</span><h2>Policy check</h2></div>
+        <span className="fresh-pill">Server-verified meals</span>
+      </div>
+      {policiesState === "loading" && <div className="policy-message" role="status">Loading available policies…</div>}
+      {policiesState === "error" && (
+        <div className="policy-message policy-error" role="alert">
+          <p>{message}</p>
+          <button type="button" className="secondary-button" onClick={() => setPolicyRetryKey((key) => key + 1)}>Try again</button>
+        </div>
+      )}
+      {policiesState === "ready" && !policies.length && (
+        <div className="policy-message">No dietary policies are available.</div>
+      )}
+      {policiesState === "ready" && policies.length > 0 && <>
+        <div className="policy-controls">
+          <div className="field">
+            <label htmlFor="policyId">Dietary policy</label>
+            <select id="policyId" value={policyId} onChange={(event) => {
+              setPolicyId(event.target.value)
+              setCheckState("idle")
+              setResult(null)
+            }}>
+              {policies.map((policy) => <option key={policy.id} value={policy.id}>{policy.name}</option>)}
+            </select>
+            <small>{policies.find((policy) => policy.id === policyId)?.description}</small>
+          </div>
+          <div className="field">
+            <label htmlFor="policyDate">Meal date</label>
+            <input id="policyDate" type="date" value={date} onChange={(event) => {
+              setDate(event.target.value)
+              setCheckState("idle")
+              setResult(null)
+            }} />
+          </div>
+          <button type="button" className="primary-button" disabled={checkState === "loading" || !date} onClick={() => { void runCheck() }}>
+            {checkState === "loading" ? "Checking…" : "Run check"}
+          </button>
+        </div>
+        {checkState === "empty" && <div className="policy-message" role="status">{message}</div>}
+        {checkState === "missing" && <div className="policy-message policy-missing" role="alert"><strong>More meal data is needed</strong><p>{message}</p></div>}
+        {checkState === "error" && <div className="policy-message policy-error" role="alert"><p>{message}</p><button type="button" className="secondary-button" onClick={() => { void runCheck() }}>Try again</button></div>}
+        {checkState === "result" && result && (
+          <div className="policy-result" role="status">
+            <div className="policy-result-heading">
+              <span className={`policy-compliance-badge ${result.compliant ? "compliant" : "non-compliant"}`}>
+                {result.compliant ? "Compliant" : "Not compliant"}
+              </span>
+              <strong>Compliance score: {result.compliance_score}%</strong>
+            </div>
+            {result.violations.length ? (
+              <div className="policy-violations">
+                <h3>Rule results</h3>
+                {result.violations.map((violation, index) => (
+                  <article className="policy-violation" key={`${violation.rule_id}-${index}`}>
+                    <div className="policy-violation-heading">
+                      <strong>{violation.rule_id}</strong>
+                      <span className={`policy-severity ${violation.severity}`}>{violation.severity}</span>
+                    </div>
+                    <p>Actual: <strong>{violation.actual_value}</strong> · Allowed: <strong>{formatPolicyValue(violation.allowed_value)}</strong></p>
+                    <p>{violation.message}</p>
+                    <small>Source: {violation.source}</small>
+                  </article>
+                ))}
+              </div>
+            ) : <p className="policy-message">No policy violations were found for this date.</p>}
+          </div>
+        )}
+      </>}
+    </section>
+  )
+}
+
+function MyCarePlan({ patientName }: { patientName: string }) {
+  const [notes, setNotes] = useState<SavedClinicalNote[]>([])
   const [state, setState] = useState<ViewState>("loading")
-  const [connected, setConnected] = useState(false)
-  const [syncing, setSyncing] = useState(false)
-  const [lastSynced, setLastSynced] = useState<string | null>(null)
+  const [retryKey, setRetryKey] = useState(0)
+  const [selectedNote, setSelectedNote] = useState<SavedClinicalNote | null>(null)
+
+  useEffect(() => {
+    let active = true
+    setState("loading")
+    fetchMyNotes().then((result) => {
+      if (!active) return
+      setNotes(result)
+      setState(result.length ? "ready" : "empty")
+    }).catch(() => {
+      if (active) setState("error")
+    })
+    return () => { active = false }
+  }, [retryKey])
+
+  if (selectedNote) {
+    return (
+      <Screen title="My care plan" eyebrow="Read-only clinical note" action={<button className="secondary-button" onClick={() => setSelectedNote(null)}>Back to notes</button>}>
+        <ClinicalNoteView savedNote={selectedNote} patientName={patientName} onBack={() => setSelectedNote(null)} />
+      </Screen>
+    )
+  }
+
+  return (
+    <Screen title="My care plan" eyebrow="Notes from your dietitian">
+      {state === "loading" || state === "error"
+        ? <StatusState type={state} onRetry={() => setRetryKey((key) => key + 1)} />
+        : state === "empty"
+          ? <section className="status-card"><div className="status-icon"><Icon name="heart" size={25} /></div><h3>No care plan notes yet</h3><p>Notes from your dietitian will appear here.</p></section>
+          : <div className="saved-note-list">
+            {notes.map((savedNote) => (
+              <button type="button" className="saved-note-row card" key={savedNote.id} onClick={() => setSelectedNote(savedNote)}>
+                <span><strong>{savedNote.content.diagnosis.problem.term}</strong><small>{new Date(savedNote.content.date).toLocaleDateString()} · Saved {new Date(savedNote.createdAt).toLocaleDateString()}</small></span>
+                <Icon name="arrow" />
+              </button>
+            ))}
+          </div>}
+    </Screen>
+  )
+}
+
+function Wearable() {
+  const [state, setState] = useState<ViewState>("empty")
+  const [previewState, setPreviewState] = useState<ViewState>("ready")
+  const [source, setSource] = useState<WearableSource>(() => getSelectedWearableSource())
+  const [dailyData, setDailyData] = useState<WearableDailyData | null>(null)
   const [weeklyData, setWeeklyData] = useState<WearableDailyData[]>([])
-  const loadWeek = async () => {
+  const displayState = previewState === "ready" ? state : previewState
+
+  const syncActivity = async () => {
     setState("loading")
     try {
-      setWeeklyData(await fetchWeeklyWearableData())
+      const [today, week] = await Promise.all([
+        fetchDailyWearableData(undefined, source),
+        fetchWeeklyWearableData(source),
+      ])
+      setDailyData(today)
+      setWeeklyData(week)
+      rememberSyncedWearableSource(source)
       setState("ready")
     } catch {
       setState("error")
     }
   }
-  useEffect(() => { void loadWeek() }, [])
-  const connect = async () => {
-    setSyncing(true)
-    try {
-      const [today, week] = await Promise.all([
-        fetchDailyWearableData(),
-        fetchWeeklyWearableData(),
-      ])
-      setWeeklyData(week)
-      setLastSynced(today.lastSynced)
-      setConnected(true)
-      setState("ready")
-    } catch {
-      setState("error")
-    } finally {
-      setSyncing(false)
-    }
+  const changeSource = (nextSource: WearableSource) => {
+    setSource(nextSource)
+    rememberSelectedWearableSource(nextSource)
+    setDailyData(null)
+    setWeeklyData([])
+    setState("empty")
+    setPreviewState("ready")
   }
   const totalSteps = weeklyData.reduce((total, day) => total + day.steps, 0)
   const averageSteps = weeklyData.length ? Math.round(totalSteps / weeklyData.length) : 0
@@ -475,13 +771,42 @@ function Wearable() {
     ? Math.round(weeklyData.reduce((total, day) => total + day.activeEnergyKcal, 0) / weeklyData.length)
     : 0
   return (
-    <Screen title="Wearable sync" eyebrow="Activity, all in one place" action={<StatePicker value={state} onChange={setState} />}>
-      {state !== "ready" ? <StatusState type={state} onRetry={() => { void loadWeek() }} /> : <>
-        <section className={`device-card ${connected ? "connected" : ""}`}>
-          <div className="watch-visual"><Icon name="watch" size={34} /></div>
-          <div><span className="section-kicker">{connected ? "CONNECTED" : "NO DEVICE CONNECTED"}</span><h2>{connected ? "Apple Watch" : "Connect your wearable"}</h2><p>{connected && lastSynced ? `Last synced ${new Date(lastSynced).toLocaleString()}` : "Bring your steps and workouts into NutriTrack."}</p></div>
-          <button className={connected ? "secondary-button" : "primary-button"} onClick={() => { void connect() }} disabled={syncing}>{syncing ? "Connecting…" : connected ? "Sync now" : "Connect device"}</button>
-        </section>
+    <Screen title="Wearable sync" eyebrow="Activity, all in one place" action={<StatePicker value={previewState} onChange={setPreviewState} />}>
+      <div className="wearable-simulation-heading">
+        <span className="wearable-simulation-tag">API simulation</span>
+        <p>Demo activity from NutriTrack’s local mock API; it does not connect to a real Google or Apple account.</p>
+      </div>
+      <section className={`device-card ${displayState === "ready" ? "connected" : ""}`}>
+        <div className="watch-visual"><Icon name="watch" size={34} /></div>
+        <div className="wearable-source-controls">
+          <div className="field">
+            <label htmlFor="wearableSource">Source</label>
+            <select id="wearableSource" value={source} onChange={(event) => changeSource(event.target.value as WearableSource)}>
+              <option value="googlefit">Google Fit</option>
+              <option value="applehealth">Apple Health</option>
+            </select>
+          </div>
+          <button className="primary-button" onClick={() => { void syncActivity() }} disabled={displayState === "loading"}>
+            {displayState === "loading" ? "Syncing…" : "Sync activity"}
+          </button>
+        </div>
+        <div className="wearable-connection-status" aria-live="polite">
+          {displayState === "ready" && dailyData
+            ? <><span className="section-kicker">CONNECTED · {source === "googlefit" ? "GOOGLE FIT" : "APPLE HEALTH"}</span><p>Last synced {new Date(dailyData.lastSynced).toLocaleString()}</p></>
+            : displayState === "loading"
+              ? <><span className="section-kicker">SYNCING</span><div className="skeleton wide" /></>
+              : displayState === "error"
+                ? <StatusState type="error" onRetry={() => { void syncActivity() }} />
+                : displayState === "empty"
+                  ? <><span className="section-kicker">NOT CONNECTED</span><h2>Not synced yet</h2><p>Choose a source and sync to load simulated activity.</p></>
+                  : <div className="skeleton wide" />}
+        </div>
+      </section>
+      {displayState === "ready" && dailyData && <>
+        <div className="metric-grid wearable-today-metrics">
+          <section className="metric-card"><div className="metric-icon mint"><Icon name="steps" /></div><span>Steps today</span><strong>{dailyData.steps.toLocaleString()}</strong></section>
+          <section className="metric-card"><div className="metric-icon peach"><Icon name="flame" /></div><span>Active energy</span><strong>{dailyData.activeEnergyKcal}</strong><small>kcal</small></section>
+        </div>
         <section className="card chart-card">
           <div className="section-heading"><div><span className="section-kicker">LAST 7 DAYS</span><h2>Daily movement</h2></div><span className="chart-total">{(totalSteps / 1000).toFixed(1)}k <small>steps</small></span></div>
           <div className="legend"><span><i className="green-dot" /> Steps</span><span><i className="orange-dot" /> Active kcal</span></div>
@@ -632,7 +957,7 @@ export default function App() {
   const isDietitian = user.role === "dietitian"
   const tabs: { id: Tab; label: string; icon: string }[] = isDietitian
     ? [{ id: "patients", label: "Patients", icon: "user" }, { id: "charting", label: "Charting", icon: "chart" }]
-    : [{ id: "home", label: "Today", icon: "home" }, { id: "log", label: "Log meal", icon: "plus" }, { id: "history", label: "History", icon: "list" }, { id: "wearable", label: "Wearable", icon: "watch" }]
+    : [{ id: "home", label: "Today", icon: "home" }, { id: "log", label: "Log meal", icon: "plus" }, { id: "history", label: "History", icon: "list" }, { id: "wearable", label: "Wearable", icon: "watch" }, { id: "careplan", label: "My care plan", icon: "heart" }]
   const navigate = (nextTab: Tab) => {
     if (!isDietitian && (nextTab === "charting" || nextTab === "patients")) return
     if (isDietitian && nextTab !== "charting" && nextTab !== "patients") return
@@ -651,8 +976,9 @@ export default function App() {
         {currentTab === "log" && <MealLog onSave={async (meal) => { await createMeal(meal); navigate("history") }} />}
         {currentTab === "history" && <History />}
         {currentTab === "wearable" && <Wearable />}
-        {currentTab === "patients" && isDietitian && <PatientsPage onStartChart={() => navigate("charting")} />}
-        {currentTab === "charting" && isDietitian && <Charting />}
+        {currentTab === "careplan" && !isDietitian && <MyCarePlan patientName={user.name} />}
+        {currentTab === "patients" && isDietitian && <PatientsPage provider={user} />}
+        {currentTab === "charting" && isDietitian && <Screen title="Charting" eyebrow="Provider workspace"><section className="card"><h2>Start from a patient record</h2><p>Choose an assigned patient, open their record, and select <strong>Start chart</strong> to create a patient-specific clinical note.</p><button className="primary-button" onClick={() => navigate("patients")}>Go to patients <Icon name="arrow" /></button></section></Screen>}
       </div>
       <nav className="bottom-nav" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>{tabs.map((item) => <button key={item.id} className={currentTab === item.id ? "active" : ""} onClick={() => navigate(item.id)}><Icon name={item.icon} /><span>{item.label}</span></button>)}</nav>
     </div>

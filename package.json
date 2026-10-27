@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:all": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\dev.ps1",
     "build": "vite build",
     "preview": "vite preview",
     "format": "oxfmt"

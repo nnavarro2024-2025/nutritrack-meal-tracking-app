@@ -12,6 +12,9 @@ export type MealRecord = {
   protein: number
   carbs: number
   fat: number
+  sodiumMg?: number
+  fiberG?: number
+  addedSugarG?: number
   notes: string
   loggedAt: string
   photoUrl: string | null
@@ -25,6 +28,9 @@ export type CreateMealInput = {
   protein: number
   carbs: number
   fat: number
+  sodiumMg?: number
+  fiberG?: number
+  addedSugarG?: number
   notes: string
   photo?: File | null
 }
@@ -75,6 +81,9 @@ export async function createMeal(input: CreateMealInput): Promise<MealRecord> {
   body.set("protein", String(input.protein))
   body.set("carbs", String(input.carbs))
   body.set("fat", String(input.fat))
+  if (input.sodiumMg !== undefined) body.set("sodiumMg", String(input.sodiumMg))
+  if (input.fiberG !== undefined) body.set("fiberG", String(input.fiberG))
+  if (input.addedSugarG !== undefined) body.set("addedSugarG", String(input.addedSugarG))
   body.set("notes", input.notes)
   if (input.photo) body.set("photo", input.photo)
 

@@ -1,0 +1,151 @@
+{
+  "info": {
+    "_postman_id": "1df5e5bb-d028-4e88-9472-ef7e0f6ea0e9",
+    "name": "NutriTrack Saved Clinical Notes",
+    "description": "Dietitian patient-specific note saving and consumer read-only care plan requests. Authenticate with nutritrack-auth.postman_collection.json first and set the variables below.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Save valid patient note (dietitian)",
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "if (pm.response.code === 201) {",
+            "  pm.collectionVariables.set('noteId', pm.response.json().note.id);",
+            "}"
+          ]
+        }
+      }],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{dietitianToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"patientId\": \"client-values-are-overridden\",\n  \"providerId\": \"client-values-are-overridden\",\n  \"date\": \"2026-10-26\",\n  \"assessment\": { \"domains\": [{ \"domain\": \"food/nutrition-related history\", \"items\": [{ \"term\": \"Food intake\", \"value\": \"Approximately 3 meals daily\", \"unit\": \"description\" }] }] },\n  \"diagnosis\": { \"problem\": { \"term\": \"Inadequate energy intake\" }, \"etiology\": \"limited meal planning during a busy work schedule\", \"signsSymptoms\": [\"reported intake below estimated needs\", \"frequently skips lunch\"], \"generatedSentence\": \"Inadequate energy intake related to limited meal planning during a busy work schedule as evidenced by reported intake below estimated needs; frequently skips lunch\" },\n  \"intervention\": { \"category\": \"Nutrition Care Plan Development\", \"term\": \"Identify nutrition intervention goal\", \"goal\": \"Plan and eat lunch on at least five workdays each week.\", \"schedule\": { \"frequency\": \"Review weekly\", \"startDate\": \"2026-10-26\" } },\n  \"monitoringEvaluation\": { \"indicator\": \"Intervention goal status\", \"target\": \"Lunch planned and eaten on at least 5 workdays each week\", \"measuredResult\": \"Baseline: lunch skipped on 3 workdays last week\", \"status\": \"in-progress\" }\n}"
+        },
+        "url": "{{baseUrl}}/api/patients/{{patientId}}/notes",
+        "description": "The server validates the note, then sets patientId and providerId from the authenticated route and dietitian."
+      },
+      "response": [{
+        "name": "Note saved",
+        "status": "Created",
+        "code": 201,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"note\": {\n    \"id\": \"<saved-note-id>\",\n    \"patientId\": \"<real-patient-id>\",\n    \"dietitianId\": \"<real-dietitian-id>\",\n    \"content\": { \"patientId\": \"<real-patient-id>\", \"providerId\": \"<real-dietitian-id>\", \"date\": \"2026-10-26\", \"diagnosis\": { \"problem\": { \"term\": \"Inadequate energy intake\" }, \"generatedSentence\": \"Inadequate energy intake related to limited meal planning during a busy work schedule as evidenced by reported intake below estimated needs; frequently skips lunch\" } },\n    \"createdAt\": \"2026-10-26T12:00:00.000Z\",\n    \"updatedAt\": \"2026-10-26T12:00:00.000Z\"\n  }\n}"
+      }]
+    },
+    {
+      "name": "Save invalid note (400)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{dietitianToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"providerId\": \"ignored\",\n  \"date\": \"2026-10-26\",\n  \"assessment\": { \"domains\": [{ \"domain\": \"food/nutrition-related history\", \"items\": [{ \"term\": \"Food intake\", \"value\": \"Some meals\", \"unit\": \"description\" }] }] },\n  \"diagnosis\": { \"problem\": { \"term\": \"Inadequate energy intake\" }, \"etiology\": \"an example cause\", \"signsSymptoms\": [\"an example sign\"], \"generatedSentence\": \"Wrong PES sentence\" },\n  \"intervention\": { \"category\": \"Nutrition Care Plan Development\", \"term\": \"Identify nutrition intervention goal\", \"goal\": \"Example goal\", \"schedule\": { \"frequency\": \"Weekly\", \"startDate\": \"2026-10-26\" } },\n  \"monitoringEvaluation\": { \"indicator\": \"Intervention goal status\", \"target\": \"Example target\", \"measuredResult\": \"Example result\", \"status\": \"unknown\" }\n}"
+        },
+        "url": "{{baseUrl}}/api/patients/{{patientId}}/notes"
+      },
+      "response": [{
+        "name": "Readable validation errors; no save",
+        "status": "Bad Request",
+        "code": 400,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"valid\": false,\n  \"errors\": [\n    { \"path\": \"/monitoringEvaluation/status\", \"message\": \"must be equal to one of the allowed values\" }\n  ]\n}"
+      }]
+    },
+    {
+      "name": "List assigned patient's notes (dietitian)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{dietitianToken}}" }],
+        "url": "{{baseUrl}}/api/patients/{{patientId}}/notes"
+      },
+      "response": [{
+        "name": "Patient's saved notes",
+        "status": "OK",
+        "code": 200,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"notes\": [\n    {\n      \"id\": \"<saved-note-id>\",\n      \"patientId\": \"<real-patient-id>\",\n      \"dietitianId\": \"<real-dietitian-id>\",\n      \"content\": { \"date\": \"2026-10-26\", \"diagnosis\": { \"problem\": { \"term\": \"Inadequate energy intake\" } } },\n      \"createdAt\": \"2026-10-26T12:00:00.000Z\",\n      \"updatedAt\": \"2026-10-26T12:00:00.000Z\"\n    }\n  ]\n}"
+      }]
+    },
+    {
+      "name": "Get one saved note (authoring dietitian)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{dietitianToken}}" }],
+        "url": "{{baseUrl}}/api/notes/{{noteId}}"
+      },
+      "response": [{
+        "name": "Saved note",
+        "status": "OK",
+        "code": 200,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"note\": {\n    \"id\": \"<saved-note-id>\",\n    \"patientId\": \"<real-patient-id>\",\n    \"dietitianId\": \"<real-dietitian-id>\",\n    \"content\": { \"date\": \"2026-10-26\", \"diagnosis\": { \"problem\": { \"term\": \"Inadequate energy intake\" } } },\n    \"createdAt\": \"2026-10-26T12:00:00.000Z\",\n    \"updatedAt\": \"2026-10-26T12:00:00.000Z\"\n  }\n}"
+      }]
+    },
+    {
+      "name": "List my care plan notes (consumer)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{consumerToken}}" }],
+        "url": "{{baseUrl}}/api/my/notes"
+      },
+      "response": [{
+        "name": "Own read-only notes",
+        "status": "OK",
+        "code": 200,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"notes\": [\n    {\n      \"id\": \"<saved-note-id>\",\n      \"patientId\": \"<current-consumer-id>\",\n      \"dietitianId\": \"<dietitian-id>\",\n      \"content\": { \"date\": \"2026-10-26\", \"diagnosis\": { \"problem\": { \"term\": \"Inadequate energy intake\" } } },\n      \"createdAt\": \"2026-10-26T12:00:00.000Z\",\n      \"updatedAt\": \"2026-10-26T12:00:00.000Z\"\n    }\n  ]\n}"
+      }]
+    },
+    {
+      "name": "Patient notes without a token (401)",
+      "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/patients/{{patientId}}/notes" },
+      "response": [{
+        "name": "Authentication required",
+        "status": "Unauthorized",
+        "code": 401,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"error\": \"Authentication required.\",\n  \"code\": \"AUTH_REQUIRED\"\n}"
+      }]
+    },
+    {
+      "name": "Consumer tries dietitian note route (403)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{consumerToken}}" }],
+        "url": "{{baseUrl}}/api/patients/{{patientId}}/notes"
+      },
+      "response": [{
+        "name": "Dietitian role required",
+        "status": "Forbidden",
+        "code": 403,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"error\": \"A dietitian role is required.\",\n  \"code\": \"FORBIDDEN\"\n}"
+      }]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3001" },
+    { "key": "patientId", "value": "" },
+    { "key": "noteId", "value": "" },
+    { "key": "consumerToken", "value": "" },
+    { "key": "dietitianToken", "value": "" }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "national_dietary_guidelines",
+  "name": "U.S. Dietary Guidelines",
+  "description": "Applies the U.S. Dietary Guidelines' daily sodium limit for adults and adolescents.",
+  "rules": [
+    {
+      "id": "daily-sodium-guideline",
+      "nutrient": "sodium_mg",
+      "operator": "<=",
+      "threshold": 2300,
+      "scope": "per_day",
+      "severity": "warning",
+      "source": "Dietary Guidelines for Americans, 2020–2025: adults and adolescents should consume less than 2300 mg sodium per day. https://www.dietaryguidelines.gov/"
+    }
+  ]
+}

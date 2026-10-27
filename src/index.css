@@ -119,6 +119,16 @@ h1, h2, h3, .logo, .calorie-number, .metric-card strong { font-family: "Manrope"
 .watch-visual { width: 58px; height: 68px; border-radius: 18px; display: grid; place-items: center; background: var(--ink); color: #86d6a1; box-shadow: inset 0 0 0 7px #29483e; }
 .device-card p { color: var(--muted); font-size: 12px; margin-top: 4px; }
 .device-card.connected { border-color: #9acbad; }
+.wearable-simulation-heading { display: flex; align-items: center; gap: 12px; margin: -8px 0 16px; }
+.wearable-simulation-heading p { color: var(--muted); font-size: 12px; }
+.wearable-simulation-tag { flex: 0 0 auto; border-radius: 99px; padding: 7px 10px; background: #e6f4ea; color: var(--green-dark); font-size: 10px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; }
+.wearable-source-controls { display: flex; align-items: end; gap: 10px; }
+.wearable-source-controls .field { flex: 1; }
+.wearable-source-controls .primary-button { min-height: 49px; padding: 0 15px; }
+.wearable-connection-status { grid-column: 1 / -1; min-width: 0; }
+.wearable-connection-status .status-card { min-height: 180px; }
+.wearable-connection-status .skeleton { margin-top: 12px; }
+.wearable-today-metrics { margin-bottom: 14px; }
 .chart-card { padding-bottom: 16px; }
 .chart-total { font-family: "Manrope"; font-size: 18px; text-align: right; }
 .chart-total small { display: block; color: var(--muted); font-family: "DM Sans"; font-size: 9px; }
@@ -236,8 +246,51 @@ h1, h2, h3, .logo, .calorie-number, .metric-card strong { font-family: "Manrope"
 .patient-week-track { width: min(100%, 34px); height: 100%; display: flex; align-items: end; overflow: hidden; border-radius: 8px; background: var(--green-pale); }
 .patient-week-track i { width: 100%; border-radius: 8px 8px 0 0; background: var(--green); }
 .patient-meals-section { display: grid; gap: 12px; margin-top: 26px; }
+.patient-notes-section { display: grid; gap: 12px; margin-top: 26px; }
 .patient-start-chart { width: 100%; margin-top: 22px; }
+.policy-check-section { margin-top: 20px; }
+.policy-controls { display: grid; gap: 12px; margin-top: 18px; }
+.policy-controls .field small { color: var(--muted); font-size: 11px; line-height: 1.5; }
+.policy-controls > .primary-button { width: 100%; }
+.policy-message { margin-top: 15px; padding: 14px; border-radius: 12px; background: #f3f7f3; color: var(--ink); font-size: 13px; line-height: 1.5; }
+.policy-error, .policy-missing { background: #fff3ef; color: #8c392f; }
+.policy-message .secondary-button { margin-top: 10px; min-height: 40px; }
+.policy-result { margin-top: 18px; padding: 16px; border: 1px solid var(--line); border-radius: 16px; }
+.policy-result-heading, .policy-violation-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.policy-result-heading > strong { font-family: "Manrope"; font-size: 14px; }
+.policy-compliance-badge, .policy-severity { display: inline-flex; align-items: center; border-radius: 99px; padding: 7px 11px; font-size: 11px; font-weight: 800; }
+.policy-compliance-badge.compliant { background: var(--green-pale); color: var(--green-dark); }
+.policy-compliance-badge.non-compliant, .policy-severity.error { background: #fff0ee; color: var(--danger); }
+.policy-severity.warning { background: #fff4df; color: #93600a; }
+.policy-violations { display: grid; gap: 10px; margin-top: 18px; }
+.policy-violations h3 { font-size: 14px; }
+.policy-violation { padding: 13px; border-radius: 12px; background: #fbfdfb; border: 1px solid var(--line); }
+.policy-violation-heading strong { font-size: 12px; }
+.policy-violation p { margin-top: 7px; color: var(--muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.policy-violation small { display: block; margin-top: 8px; color: var(--muted); font-size: 10px; line-height: 1.5; overflow-wrap: anywhere; }
 .meal-card .meal-copy > p + p { margin-top: 4px; }
+.saved-note-list { display: grid; gap: 10px; }
+.saved-note-row { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px; color: var(--ink); text-align: left; cursor: pointer; }
+.saved-note-row > span { display: grid; gap: 5px; }
+.saved-note-row small { color: var(--muted); font-size: 11px; }
+.saved-note-row > svg { flex: 0 0 auto; color: var(--green); }
+.saved-note-back { margin-top: 20px; }
+.saved-note-review { margin-top: 14px; }
+.charting-header-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }
+.charting-for-patient { margin-top: 5px; color: var(--muted); font-size: 13px; }
+.charting-patient-context { margin: 0 0 18px; padding: 15px 18px; border: 1px solid var(--line); border-radius: 16px; background: white; }
+.charting-patient-context > summary { color: var(--green-dark); font-size: 13px; font-weight: 700; cursor: pointer; }
+.charting-context-content { display: grid; gap: 18px; margin-top: 16px; }
+.charting-context-today, .charting-context-week, .charting-context-meals { display: grid; gap: 8px; }
+.charting-context-today > strong { color: var(--ink); font-size: 20px; }
+.charting-context-today > span:last-child, .charting-context-state { color: var(--muted); font-size: 12px; }
+.charting-context-days { min-height: 92px; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; align-items: end; }
+.charting-context-days > div { height: 85px; display: grid; grid-template-rows: 1fr 16px; justify-items: center; align-items: end; gap: 5px; }
+.charting-context-days i { width: min(100%, 24px); min-height: 3px; align-self: end; border-radius: 6px 6px 0 0; background: var(--green); }
+.charting-context-days small { color: var(--muted); font-size: 9px; }
+.charting-context-meals > p { display: flex; justify-content: space-between; gap: 10px; color: var(--ink); font-size: 12px; }
+.charting-context-meals > p span { color: var(--muted); text-align: right; }
+.charting-context-state { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
 
 @media (min-width: 760px) {
   .app-shell { display: grid; grid-template-columns: 230px 1fr; }
@@ -261,9 +314,13 @@ h1, h2, h3, .logo, .calorie-number, .metric-card strong { font-family: "Manrope"
   .ring { width: 86px; height: 86px; }
   .meal-form > .primary-button { width: auto; justify-self: end; min-width: 190px; }
   .patient-start-chart { width: auto; min-width: 180px; }
-  .device-card { grid-template-columns: auto 1fr auto; }
+  .device-card { grid-template-columns: auto minmax(0, 1fr); }
   .device-card > button { grid-column: auto; width: auto; }
+  .wearable-source-controls { grid-column: 2; }
+  .wearable-connection-status { grid-column: 1 / -1; }
   .charting-card { padding: 24px; }
+  .policy-controls { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: end; }
+  .policy-controls > .primary-button { width: auto; }
   .charting-patient-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .charting-two-column { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .charting-progress { gap: 10px; margin-bottom: 20px; }
@@ -281,6 +338,9 @@ h1, h2, h3, .logo, .calorie-number, .metric-card strong { font-family: "Manrope"
 }
 
 @media (max-width: 420px) {
+  .wearable-simulation-heading { align-items: flex-start; flex-direction: column; }
+  .wearable-source-controls { align-items: stretch; flex-direction: column; }
+  .wearable-source-controls .primary-button { width: 100%; }
   .charting-actions { flex-wrap: wrap; }
   .charting-step-error { width: 100%; order: -1; }
   .form-row.three { grid-template-columns: 1fr 1fr; }

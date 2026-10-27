@@ -1,7 +1,5 @@
 import cors from "cors"
 import express from "express"
-import Ajv from "ajv"
-import addFormats from "ajv-formats"
 import mongoose from "mongoose"
 import { readFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
@@ -9,8 +7,11 @@ import { fileURLToPath } from "node:url"
 import dotenv from "dotenv"
 import authRoutes from "./routes/auth.js"
 import { mealRoutes } from "./routes/meals.js"
+import notesRoutes from "./routes/notes.js"
+import policyRoutes from "./routes/policy.js"
 import patientsRoutes from "./routes/patients.js"
 import { authenticateToken, requireRole } from "./middleware/auth.js"
+import { getClinicalNoteValidationErrors } from "./services/clinicalNoteValidation.js"
 
 const backendDirectory = dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: resolve(backendDirectory, ".env") })
@@ -20,14 +21,6 @@ const schemaDirectory = resolve(backendDirectory, "../schemas")
 const loadSchema = (filename) => JSON.parse(readFileSync(resolve(schemaDirectory, filename), "utf8"))
 const terminologySchema = loadSchema("terminology.json")
 const terminology = terminologySchema.definitions
-const validator = new Ajv({ allErrors: true })
-addFormats(validator)
-validator.addSchema(terminologySchema)
-validator.addSchema(loadSchema("assessment.schema.json"))
-validator.addSchema(loadSchema("diagnosis.schema.json"))
-validator.addSchema(loadSchema("intervention.schema.json"))
-validator.addSchema(loadSchema("monitoring-evaluation.schema.json"))
-const validateClinicalNote = validator.compile(loadSchema("clinical-note.schema.json"))
 
 function isAllowedOrigin(origin) {
   let url
@@ -66,15 +59,9 @@ app.use(cors({
 app.use(express.json())
 app.use("/api/auth", authRoutes)
 app.use("/api/meals", mealRoutes)
+app.use("/api", notesRoutes)
+app.use("/api", policyRoutes)
 app.use("/api/patients", patientsRoutes)
-
-function formatValidationErrors(errors = []) {
-  return errors.map((error) => {
-    const property = error.params?.missingProperty || error.params?.additionalProperty
-    const path = `${error.instancePath || ""}${property ? `/${property}` : ""}` || "/"
-    return { path, message: error.message || "is invalid" }
-  })
-}
 
 app.get("/api/terminology", (_request, response) => {
   const termLists = Object.fromEntries(
@@ -94,23 +81,11 @@ app.get("/api/terminology", (_request, response) => {
 })
 
 app.post("/api/notes/validate", authenticateToken, requireRole("dietitian"), (request, response) => {
-  if (!validateClinicalNote(request.body)) {
+  const errors = getClinicalNoteValidationErrors(request.body)
+  if (errors.length) {
     response.status(400).json({
       valid: false,
-      errors: formatValidationErrors(validateClinicalNote.errors),
-    })
-    return
-  }
-
-  const { diagnosis } = request.body
-  const expectedSentence = `${diagnosis.problem.term} related to ${diagnosis.etiology} as evidenced by ${diagnosis.signsSymptoms.join("; ")}`
-  if (diagnosis.generatedSentence !== expectedSentence) {
-    response.status(400).json({
-      valid: false,
-      errors: [{
-        path: "/diagnosis/generatedSentence",
-        message: `must match the generated PES sentence: "${expectedSentence}"`,
-      }],
+      errors,
     })
     return
   }
@@ -145,23 +120,56 @@ function createRandom(seed) {
   }
 }
 
-function getDailyData(date) {
-  const random = createRandom(date)
+function isWearableSource(source) {
+  return source === "googlefit" || source === "applehealth"
+}
+
+function getDailyData(date, source) {
+  const random = createRandom(source ? `${date}:${source}` : date)
   const steps = 3000 + Math.floor(random() * 11001)
   const activeEnergyKcal = 150 + Math.floor(random() * 751)
   const distanceKm = Number((steps * (0.00065 + random() * 0.00015)).toFixed(2))
+  const lastSynced = new Date().toISOString()
 
+  if (source === "googlefit") {
+    // These shapes are illustrative and inspired by Google Fit and Apple HealthKit, not exact copies of their real API responses.
+    return {
+      source,
+      date,
+      step_count: steps,
+      calories_expended: activeEnergyKcal,
+      distance_meters: Math.round(distanceKm * 1000),
+      synced_at: lastSynced,
+    }
+  }
+  if (source === "applehealth") {
+    return {
+      source,
+      date,
+      stepCount: steps,
+      activeEnergyBurned: { value: activeEnergyKcal, unit: "kcal" },
+      distanceWalkingRunning: { value: distanceKm, unit: "km" },
+      endDate: lastSynced,
+    }
+  }
   return {
     date,
     steps,
     activeEnergyKcal,
     distanceKm,
-    lastSynced: new Date().toISOString(),
+    lastSynced,
   }
 }
 
 app.get("/api/wearable/daily", (request, response) => {
   const date = request.query.date
+  const source = request.query.source
+  if (source !== undefined && (typeof source !== "string" || !isWearableSource(source))) {
+    response.status(400).json({
+      error: 'Invalid wearable source. Use "googlefit" or "applehealth".',
+    })
+    return
+  }
   if (typeof date !== "string" || !isValidDate(date)) {
     response.status(400).json({
       error: "A valid date query parameter is required in YYYY-MM-DD format.",
@@ -169,15 +177,22 @@ app.get("/api/wearable/daily", (request, response) => {
     return
   }
 
-  response.json(getDailyData(date))
+  response.json(getDailyData(date, source))
 })
 
-app.get("/api/wearable/week", (_request, response) => {
+app.get("/api/wearable/week", (request, response) => {
+  const source = request.query.source
+  if (source !== undefined && (typeof source !== "string" || !isWearableSource(source))) {
+    response.status(400).json({
+      error: 'Invalid wearable source. Use "googlefit" or "applehealth".',
+    })
+    return
+  }
   const today = new Date()
   const week = Array.from({ length: 7 }, (_, index) => {
     const date = new Date(today)
     date.setDate(today.getDate() - (6 - index))
-    return getDailyData(formatDate(date))
+    return getDailyData(formatDate(date), source)
   })
 
   response.json(week)

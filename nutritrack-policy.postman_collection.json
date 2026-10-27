@@ -1,0 +1,232 @@
+{
+  "info": {
+    "_postman_id": "4c590cb8-8ff0-43cc-a187-21a7022a7f68",
+    "name": "NutriTrack Dietary Policy Checks",
+    "description": "Dietitian-only policy-check examples. Start the FastAPI policy service and Express API, then set baseUrl, dietitianToken, patientId, and dates. The Express API loads saved meals from MongoDB; client meal data is ignored.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3001" },
+    { "key": "dietitianToken", "value": "" },
+    { "key": "consumerToken", "value": "" },
+    { "key": "patientId", "value": "" },
+    { "key": "unassignedPatientId", "value": "" },
+    { "key": "today", "value": "2026-10-27" },
+    { "key": "violationDate", "value": "2026-10-26" },
+    { "key": "emptyDate", "value": "1900-01-01" }
+  ],
+  "item": [
+    {
+      "name": "List available policies",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{dietitianToken}}" }
+        ],
+        "url": "{{baseUrl}}/api/policy/policies"
+      },
+      "response": [
+        {
+          "name": "Policy list",
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+          "body": "[\n  {\n    \"id\": \"diabetic_hospital\",\n    \"name\": \"Diabetic hospital\",\n    \"description\": \"Uses a 45–60 g carbohydrate meal target and daily added-sugar and fiber targets.\"\n  },\n  {\n    \"id\": \"low_sodium_hospital\",\n    \"name\": \"Low-sodium hospital\",\n    \"description\": \"Limits the total sodium in a day's meals to 2000 mg.\"\n  },\n  {\n    \"id\": \"national_dietary_guidelines\",\n    \"name\": \"U.S. Dietary Guidelines\",\n    \"description\": \"Applies the U.S. Dietary Guidelines' daily sodium limit for adults and adolescents.\"\n  }\n]"
+        }
+      ]
+    },
+    {
+      "name": "National guidelines — passing day",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{dietitianToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"policyId\": \"national_dietary_guidelines\",\n  \"date\": \"{{today}}\"\n}"
+        },
+        "url": "{{baseUrl}}/api/patients/{{patientId}}/policy-check",
+        "description": "Uses saved meals for the patient and date; the sample seed uses 1300 mg sodium for Alex today."
+      },
+      "response": [
+        {
+          "name": "Compliant result",
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+          "body": "{\n  \"compliant\": true,\n  \"violations\": [],\n  \"compliance_score\": 100\n}"
+        }
+      ]
+    },
+    {
+      "name": "Low sodium — violating day",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{dietitianToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"policyId\": \"low_sodium_hospital\",\n  \"date\": \"{{violationDate}}\"\n}"
+        },
+        "url": "{{baseUrl}}/api/patients/{{patientId}}/policy-check",
+        "description": "Uses saved meals for the patient and date; the sample seed uses 2200 mg sodium for Alex yesterday."
+      },
+      "response": [
+        {
+          "name": "Sodium limit violation",
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+          "body": "{\n  \"compliant\": false,\n  \"violations\": [\n    {\n      \"rule_id\": \"daily-sodium-limit\",\n      \"actual_value\": 2200,\n      \"allowed_value\": 2000,\n      \"message\": \"sodium_mg was 2200 per day; expected <= 2000.\",\n      \"source\": \"Hospital low-sodium policy target: 2000 mg sodium per day.\",\n      \"severity\": \"error\"\n    }\n  ],\n  \"compliance_score\": 0\n}"
+        }
+      ]
+    },
+    {
+      "name": "No meals for the date",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{dietitianToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"policyId\": \"national_dietary_guidelines\",\n  \"date\": \"{{emptyDate}}\"\n}"
+        },
+        "url": "{{baseUrl}}/api/patients/{{patientId}}/policy-check"
+      },
+      "response": [
+        {
+          "name": "No saved meals",
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+          "body": "{\n  \"noMeals\": true,\n  \"message\": \"No saved meals for 1900-01-01.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Missing required nutrient",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{dietitianToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"policyId\": \"low_sodium_hospital\",\n  \"date\": \"2001-02-03\"\n}"
+        },
+        "url": "{{baseUrl}}/api/patients/{{patientId}}/policy-check",
+        "description": "Create or use a saved meal on 2001-02-03 without sodiumMg to reproduce the missing-data response."
+      },
+      "response": [
+        {
+          "name": "Meal nutrient data required",
+          "status": "Unprocessable Entity",
+          "code": 422,
+          "_postman_previewlanguage": "json",
+          "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+          "body": "{\n  \"error\": \"Breakfast: Oatmeal is missing sodium_mg. Add this value to the saved meal before running the policy check.\",\n  \"missingData\": {\n    \"meal\": \"Breakfast: Oatmeal\",\n    \"nutrient\": \"sodium_mg\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Unassigned patient — forbidden",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{dietitianToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"policyId\": \"national_dietary_guidelines\",\n  \"date\": \"{{today}}\"\n}"
+        },
+        "url": "{{baseUrl}}/api/patients/{{unassignedPatientId}}/policy-check"
+      },
+      "response": [
+        {
+          "name": "Patient is not assigned",
+          "status": "Forbidden",
+          "code": 403,
+          "_postman_previewlanguage": "json",
+          "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+          "body": "{\n  \"error\": \"This patient is not assigned to you.\",\n  \"code\": \"FORBIDDEN\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Consumer — forbidden",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{consumerToken}}" }
+        ],
+        "url": "{{baseUrl}}/api/policy/policies"
+      },
+      "response": [
+        {
+          "name": "Dietitian role required",
+          "status": "Forbidden",
+          "code": 403,
+          "_postman_previewlanguage": "json",
+          "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+          "body": "{\n  \"error\": \"You do not have permission to access this resource.\",\n  \"code\": \"FORBIDDEN\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "No token — unauthorized",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/policy/policies"
+      },
+      "response": [
+        {
+          "name": "Authentication required",
+          "status": "Unauthorized",
+          "code": 401,
+          "_postman_previewlanguage": "json",
+          "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+          "body": "{\n  \"error\": \"Authentication required.\",\n  \"code\": \"AUTH_REQUIRED\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Policy service unavailable",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{dietitianToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"policyId\": \"national_dietary_guidelines\",\n  \"date\": \"{{today}}\"\n}"
+        },
+        "url": "{{baseUrl}}/api/patients/{{patientId}}/policy-check",
+        "description": "Stop the FastAPI policy service before sending this request."
+      },
+      "response": [
+        {
+          "name": "Policy service unavailable",
+          "status": "Service Unavailable",
+          "code": 503,
+          "_postman_previewlanguage": "json",
+          "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+          "body": "{\n  \"error\": \"The policy service is not running\"\n}"
+        }
+      ]
+    }
+  ]
+}

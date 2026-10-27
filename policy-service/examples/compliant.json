@@ -1,0 +1,44 @@
+{
+  "policy_id": "diabetic_hospital",
+  "meals": [
+    {
+      "name": "Breakfast",
+      "foods": [
+        {
+          "name": "Oatmeal and berries",
+          "nutrients": {
+            "carbohydrate_g": 48,
+            "added_sugar_g": 5,
+            "fiber_g": 8
+          }
+        }
+      ]
+    },
+    {
+      "name": "Lunch",
+      "foods": [
+        {
+          "name": "Bean and chicken bowl",
+          "nutrients": {
+"carbohydrate_g": 55,
+"added_sugar_g": 40,
+"fiber_g": 10
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dinner",
+      "foods": [
+        {
+          "name": "Salmon with brown rice",
+          "nutrients": {
+            "carbohydrate_g": 55,
+            "added_sugar_g": 2,
+            "fiber_g": 10
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "policy_id": "diabetic_hospital",
+  "meals": [
+    {
+      "name": "Breakfast",
+      "foods": [
+        {
+          "name": "Toast and eggs",
+          "nutrients": {
+            "carbohydrate_g": 35,
+            "added_sugar_g": 5,
+            "fiber_g": 4
+          }
+        }
+      ]
+    },
+    {
+      "name": "Lunch",
+      "foods": [
+        {
+          "name": "Rice bowl",
+          "nutrients": {
+            "carbohydrate_g": 75,
+            "added_sugar_g": 8,
+            "fiber_g": 7
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dinner",
+      "foods": [
+        {
+          "name": "Sweetened noodles",
+          "nutrients": {
+            "carbohydrate_g": 65,
+            "added_sugar_g": 12,
+            "fiber_g": 5
+          }
+        }
+      ]
+    }
+  ]
+}

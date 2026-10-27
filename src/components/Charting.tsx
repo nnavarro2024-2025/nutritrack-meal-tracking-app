@@ -5,8 +5,9 @@ import {
   NoteValidationFailure,
   NotesTerminology,
   fetchNotesTerminology,
-  validateClinicalNote,
+  savePatientNote,
 } from "../services/notesService"
+import { MealRecord, PatientSummary, fetchPatientMeals, fetchPatientSummary } from "../services/mealService"
 
 type PreviewState = "ready" | "loading" | "empty" | "error"
 type StepIndex = 0 | 1 | 2 | 3 | 4
@@ -44,10 +45,10 @@ const today = () => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
 }
 
-function createInitialForm(): ChartingForm {
+function createInitialForm(patientId: string, providerId: string): ChartingForm {
   return {
-    patientId: "patient-demo-001",
-    providerId: "provider-demo-001",
+    patientId,
+    providerId,
     date: today(),
     assessmentRows: [],
     problem: "",
@@ -170,19 +171,49 @@ function makeErrorMap(errors: Array<{ path: string; message: string }>): FieldEr
   }, {})
 }
 
-export default function Charting() {
+export default function Charting({
+  patient,
+  provider,
+  onBack,
+  onSaved,
+}: {
+  patient: { id: string; name: string }
+  provider: { id: string; name: string }
+  onBack: () => void
+  onSaved: () => void
+}) {
   const [terms, setTerms] = useState<NotesTerminology | null>(null)
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading")
   const [previewState, setPreviewState] = useState<PreviewState>("ready")
   const [step, setStep] = useState<StepIndex>(0)
-  const [form, setForm] = useState(createInitialForm)
+  const [form, setForm] = useState(() => createInitialForm(patient.id, provider.id))
   const [errors, setErrors] = useState<FieldErrors>({})
   const [serverMessages, setServerMessages] = useState<string[]>([])
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle")
   const [nextRowId, setNextRowId] = useState(1)
   const [stepErrorMessage, setStepErrorMessage] = useState("")
   const [validationAttempted, setValidationAttempted] = useState(false)
+  const [contextState, setContextState] = useState<"loading" | "ready" | "error">("loading")
+  const [patientSummary, setPatientSummary] = useState<PatientSummary | null>(null)
+  const [patientMeals, setPatientMeals] = useState<MealRecord[]>([])
+  const [contextRetryKey, setContextRetryKey] = useState(0)
   const chartingContainer = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    let active = true
+    setContextState("loading")
+    Promise.all([fetchPatientSummary(patient.id), fetchPatientMeals(patient.id)])
+      .then(([summary, meals]) => {
+        if (!active) return
+        setPatientSummary(summary)
+        setPatientMeals(meals)
+        setContextState("ready")
+      })
+      .catch(() => {
+        if (active) setContextState("error")
+      })
+    return () => { active = false }
+  }, [patient.id, contextRetryKey])
 
   const loadTerms = async () => {
     setLoadState("loading")
@@ -268,8 +299,6 @@ export default function Charting() {
       }
     }
     if (stepIndex === 0) {
-      requireValue("patientId", form.patientId, "Patient ID")
-      requireValue("providerId", form.providerId, "Provider ID")
       requireValue("date", form.date, "Note date")
       if (form.date && !isValidDate(form.date)) next.date = ["Enter a valid note date."]
       if (!form.assessmentRows.length) next["assessment.rows"] = ["Add at least one assessment finding."]
@@ -309,8 +338,8 @@ export default function Charting() {
   }
 
   const buildNote = (): ClinicalNote => ({
-    patientId: form.patientId.trim(),
-    providerId: form.providerId.trim(),
+    patientId: patient.id,
+    providerId: provider.id,
     date: form.date,
     assessment: {
       domains: form.assessmentRows.reduce<ClinicalNote["assessment"]["domains"]>((groups, row) => {
@@ -365,8 +394,9 @@ export default function Charting() {
     setServerMessages([])
     setSaveState("saving")
     try {
-      await validateClinicalNote(buildNote())
+      await savePatientNote(patient.id, buildNote())
       setSaveState("saved")
+      window.setTimeout(onSaved, 900)
     } catch (error) {
       setSaveState("idle")
       if (error instanceof NoteValidationFailure) {
@@ -398,9 +428,20 @@ export default function Charting() {
   return (
     <main className="screen charting-screen" ref={chartingContainer}>
       <header className="page-header">
-        <div><span className="eyebrow">PROVIDER WORKSPACE</span><h1>Clinical charting</h1></div>
-        <PreviewPicker value={previewState} onChange={changePreviewState} />
+        <div><span className="eyebrow">PROVIDER WORKSPACE · {provider.name}</span><h1>Clinical charting</h1><p className="charting-for-patient">Patient: {patient.name}</p></div>
+        <div className="charting-header-actions"><button type="button" className="secondary-button" onClick={onBack}>Back to patient</button><PreviewPicker value={previewState} onChange={changePreviewState} /></div>
       </header>
+
+      <details className="charting-patient-context" open>
+        <summary>Patient context · recent meals and nutrition summary</summary>
+        {contextState === "loading" ? <div className="charting-context-state"><div className="skeleton wide" /><span>Loading patient nutrition context…</span></div>
+          : contextState === "error" ? <div className="charting-context-state" role="alert"><span>Couldn’t load the patient’s meal context.</span><button type="button" className="secondary-button" onClick={() => setContextRetryKey((key) => key + 1)}>Try again</button></div>
+            : patientSummary && <div className="charting-context-content">
+              <section className="charting-context-today"><span className="section-kicker">TODAY’S TOTALS</span><strong>{patientSummary.today.calories.toLocaleString()} kcal</strong><span>Protein {patientSummary.today.protein}g · Carbs {patientSummary.today.carbs}g · Fat {patientSummary.today.fat}g</span></section>
+              <section className="charting-context-week"><span className="section-kicker">LAST 7 DAYS · CALORIES</span><div className="charting-context-days">{patientSummary.lastSevenDays.map((day) => <div key={day.date} title={`${day.date}: ${day.calories} kcal`}><i style={{ height: `${Math.max(4, Math.min(100, day.calories / 20))}%` }} /><small>{new Date(`${day.date}T00:00:00`).toLocaleDateString(undefined, { weekday: "short" })}</small></div>)}</div></section>
+              <section className="charting-context-meals"><span className="section-kicker">RECENT MEALS</span>{patientMeals.length ? patientMeals.slice(0, 4).map((meal) => <p key={meal.id}><strong>{meal.foodName}</strong><span>{meal.calories} kcal · {new Date(meal.loggedAt).toLocaleDateString()}</span></p>) : <p>No meals logged yet.</p>}</section>
+            </div>}
+      </details>
 
       {previewState === "loading" || loadState === "loading" ? (
         <div className="charting-state"><div className="skeleton wide" /><p>Loading clinical terminology…</p></div>
@@ -431,8 +472,8 @@ export default function Charting() {
               <section className="card charting-card">
                 <div className="section-heading"><div><span className="section-kicker">STEP 1 OF 4</span><h2>Assessment</h2></div><span className="fresh-pill">Patient record</span></div>
                 <div className="charting-patient-grid">
-                  <FormField id="patientId" label="Patient ID" value={form.patientId} onChange={(value) => updateForm("patientId", value)} error={messages("patientId")} />
-                  <FormField id="providerId" label="Provider ID" value={form.providerId} onChange={(value) => updateForm("providerId", value)} error={messages("providerId")} />
+                  <div className="charting-patient-summary"><span className="section-kicker">PATIENT</span><strong>{patient.name}</strong></div>
+                  <div className="charting-patient-summary"><span className="section-kicker">DIETITIAN</span><strong>{provider.name}</strong></div>
                   <FormField id="noteDate" label="Note date" type="date" value={form.date} onChange={(value) => updateForm("date", value)} error={messages("date")} />
                 </div>
                 <div className="charting-section-title"><div><h3>Assessment findings</h3><p>Choose a domain and a standardized term for each finding.</p></div><button type="button" className="secondary-button charting-add" onClick={addAssessmentRow}>＋ Add finding</button></div>
@@ -528,13 +569,13 @@ export default function Charting() {
                 <div className="section-heading review-heading"><div><span className="section-kicker">FINAL REVIEW</span><h2>Review &amp; Save Note</h2></div><button type="button" className="secondary-button print-button" onClick={() => window.print()}>Print / Export</button></div>
                 <header className="clinical-note-header">
                   <div className="brand-mark">N</div>
-                  <div><span className="section-kicker">NUTRITION CARE NOTE</span><h3>Patient {note.patientId}</h3><p>Provider {note.providerId} · {note.date}</p></div>
+                  <div><span className="section-kicker">NUTRITION CARE NOTE</span><h3>{patient.name}</h3><p>{provider.name} · {note.date}</p></div>
                 </header>
                 <div className="clinical-note-section">
                   <span className="section-kicker">01 · ASSESSMENT</span>
                   {note.assessment.domains.map((group) => (
                     <div className="clinical-note-domain" key={group.domain}><h3>{group.domain}</h3>
-                      {group.items.map((item, index) => <p key={`${item.code}-${index}`}><strong>{item.term}</strong> <span>({item.code})</span>: {item.value} {item.unit}</p>)}
+                      {group.items.map((item, index) => <p key={`${item.term}-${index}`}><strong>{item.term}</strong>{item.code && <span> ({item.code})</span>}: {item.value} {item.unit}</p>)}
                     </div>
                   ))}
                   {errors["assessment.rows"]?.map((message) => <span className="field-error" key={message}>{message}</span>)}
@@ -574,7 +615,7 @@ export default function Charting() {
                     {serverMessages.map((message) => <p key={message}>{message}</p>)}
                   </div>
                 )}
-                {saveState === "saved" && <div className="success-banner" role="status"><span>✓</span><div><strong>Note validated</strong><span>It’s ready to save. Notes are not stored in a database yet.</span></div></div>}
+                {saveState === "saved" && <div className="success-banner" role="status"><span>✓</span><div><strong>Clinical note saved successfully</strong><span>Returning to {patient.name}’s patient record…</span></div></div>}
               </section>
             )}
 
@@ -584,7 +625,7 @@ export default function Charting() {
               {step < 4 ? (
                 <button type="button" className="primary-button charting-next" onClick={goNext}>{step === 3 ? "Review note" : "Next"} <span aria-hidden="true">→</span></button>
               ) : (
-                <button type="submit" className="primary-button charting-next" disabled={saveState === "saving"}>{saveState === "saving" ? "Validating…" : saveState === "saved" ? "Validated" : "Validate & Save Note"}</button>
+                <button type="submit" className="primary-button charting-next" disabled={saveState === "saving" || saveState === "saved"}>{saveState === "saving" ? "Validating & saving…" : saveState === "saved" ? "Saved" : "Validate & Save Note"}</button>
               )}
             </div>
           </form>

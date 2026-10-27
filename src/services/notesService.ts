@@ -57,6 +57,15 @@ export type ClinicalNote = {
   }
 }
 
+export type SavedClinicalNote = {
+  id: string
+  patientId: string
+  dietitianId: string
+  content: ClinicalNote
+  createdAt: string
+  updatedAt: string
+}
+
 export type NoteValidationError = {
   path: string
   message: string
@@ -148,4 +157,117 @@ export async function validateClinicalNote(note: ClinicalNote): Promise<void> {
   ) {
     throw new Error("The notes service returned an unexpected validation response.")
   }
+}
+
+async function parseSavedNoteResponse(response: Response): Promise<unknown> {
+  let result: unknown
+  try {
+    result = await response.json()
+  } catch {
+    throw new Error("The notes service returned an unreadable response.")
+  }
+  if (!response.ok) {
+    if (
+      typeof result === "object" &&
+      result !== null &&
+      "errors" in result &&
+      Array.isArray(result.errors)
+    ) {
+      throw new NoteValidationFailure(result.errors as NoteValidationError[])
+    }
+    if (
+      typeof result === "object" &&
+      result !== null &&
+      "error" in result &&
+      typeof result.error === "string"
+    ) {
+      throw new Error(result.error)
+    }
+    throw new Error(`Notes API request failed (${response.status}).`)
+  }
+  return result
+}
+
+function isSavedClinicalNote(value: unknown): value is SavedClinicalNote {
+  if (typeof value !== "object" || value === null) return false
+  const note = value as Partial<SavedClinicalNote>
+  return typeof note.id === "string" &&
+    typeof note.patientId === "string" &&
+    typeof note.dietitianId === "string" &&
+    typeof note.content === "object" &&
+    note.content !== null &&
+    typeof note.createdAt === "string" &&
+    typeof note.updatedAt === "string"
+}
+
+export async function savePatientNote(
+  patientId: string,
+  note: ClinicalNote,
+): Promise<SavedClinicalNote> {
+  const response = await fetchWithAuth(
+    `${apiBaseUrl}/api/patients/${encodeURIComponent(patientId)}/notes`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(note),
+    },
+  )
+  const result = await parseSavedNoteResponse(response)
+  if (
+    typeof result !== "object" ||
+    result === null ||
+    !("note" in result) ||
+    !isSavedClinicalNote(result.note)
+  ) {
+    throw new Error("The notes service returned an invalid saved note.")
+  }
+  return result.note
+}
+
+export async function fetchPatientNotes(patientId: string): Promise<SavedClinicalNote[]> {
+  const response = await fetchWithAuth(
+    `${apiBaseUrl}/api/patients/${encodeURIComponent(patientId)}/notes`,
+  )
+  const result = await parseSavedNoteResponse(response)
+  if (
+    typeof result !== "object" ||
+    result === null ||
+    !("notes" in result) ||
+    !Array.isArray(result.notes) ||
+    !result.notes.every(isSavedClinicalNote)
+  ) {
+    throw new Error("The notes service returned an invalid patient note list.")
+  }
+  return result.notes
+}
+
+export async function fetchSavedNote(noteId: string): Promise<SavedClinicalNote> {
+  const response = await fetchWithAuth(
+    `${apiBaseUrl}/api/notes/${encodeURIComponent(noteId)}`,
+  )
+  const result = await parseSavedNoteResponse(response)
+  if (
+    typeof result !== "object" ||
+    result === null ||
+    !("note" in result) ||
+    !isSavedClinicalNote(result.note)
+  ) {
+    throw new Error("The notes service returned an invalid saved note.")
+  }
+  return result.note
+}
+
+export async function fetchMyNotes(): Promise<SavedClinicalNote[]> {
+  const response = await fetchWithAuth(`${apiBaseUrl}/api/my/notes`)
+  const result = await parseSavedNoteResponse(response)
+  if (
+    typeof result !== "object" ||
+    result === null ||
+    !("notes" in result) ||
+    !Array.isArray(result.notes) ||
+    !result.notes.every(isSavedClinicalNote)
+  ) {
+    throw new Error("The notes service returned an invalid note list.")
+  }
+  return result.notes
 }

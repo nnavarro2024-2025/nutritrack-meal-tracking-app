@@ -1,0 +1,16 @@
+{
+  "id": "low_sodium_hospital",
+  "name": "Low-sodium hospital",
+  "description": "Limits the total sodium in a day's meals to 2000 mg.",
+  "rules": [
+    {
+      "id": "daily-sodium-limit",
+      "nutrient": "sodium_mg",
+      "operator": "<=",
+      "threshold": 2000,
+      "scope": "per_day",
+      "severity": "error",
+      "source": "Hospital low-sodium policy target: 2000 mg sodium per day."
+    }
+  ]
+}

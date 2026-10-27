@@ -9,6 +9,11 @@ backend/.env
 backend/uploads/*
 !backend/uploads/.gitkeep
 .vite/
+.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 vite.config.*.timestamp-*
 *.tsbuildinfo
 *-debug.log*

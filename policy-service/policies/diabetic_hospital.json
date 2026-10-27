@@ -1,0 +1,34 @@
+{
+  "id": "diabetic_hospital",
+  "name": "Diabetic hospital",
+  "description": "Uses a 45–60 g carbohydrate meal target and daily added-sugar and fiber targets.",
+  "rules": [
+    {
+      "id": "meal-carbohydrate-range",
+      "nutrient": "carbohydrate_g",
+      "operator": "between",
+      "threshold": [45, 60],
+      "scope": "per_meal",
+      "severity": "error",
+      "source": "American Diabetes Association, Understanding Carbs: https://diabetes.org/food-nutrition/understanding-carbs (meal carbohydrate needs are individualized; this range is the hospital's target)."
+    },
+    {
+      "id": "daily-added-sugar-limit",
+      "nutrient": "added_sugar_g",
+      "operator": "<=",
+      "threshold": 50,
+      "scope": "per_day",
+      "severity": "warning",
+      "source": "Dietary Guidelines for Americans, 2020–2025: added sugars under 10% of calories; 50 g is the reference amount for a 2000-kcal diet. https://www.dietaryguidelines.gov/"
+    },
+    {
+      "id": "daily-fiber-minimum",
+      "nutrient": "fiber_g",
+      "operator": ">=",
+      "threshold": 28,
+      "scope": "per_day",
+      "severity": "warning",
+      "source": "Dietary Guidelines for Americans, 2020–2025: 14 g dietary fiber per 1000 kcal; 28 g at 2000 kcal. https://www.dietaryguidelines.gov/"
+    }
+  ]
+}

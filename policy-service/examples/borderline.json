@@ -1,0 +1,44 @@
+{
+  "policy_id": "diabetic_hospital",
+  "meals": [
+    {
+      "name": "Breakfast",
+      "foods": [
+        {
+          "name": "Sweetened cereal and milk",
+          "nutrients": {
+            "carbohydrate_g": 45,
+            "added_sugar_g": 20,
+            "fiber_g": 6
+          }
+        }
+      ]
+    },
+    {
+      "name": "Lunch",
+      "foods": [
+        {
+          "name": "Chicken wrap",
+          "nutrients": {
+            "carbohydrate_g": 50,
+            "added_sugar_g": 18,
+            "fiber_g": 10
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dinner",
+      "foods": [
+        {
+          "name": "Pasta and vegetables",
+          "nutrients": {
+            "carbohydrate_g": 60,
+            "added_sugar_g": 15,
+            "fiber_g": 12
+          }
+        }
+      ]
+    }
+  ]
+}

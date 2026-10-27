@@ -8,6 +8,7 @@
   "item": [
     {
       "name": "Get daily wearable data",
+      "description": "Legacy-compatible default response; source is intentionally omitted.",
       "request": {
         "method": "GET",
         "header": [],
@@ -60,6 +61,86 @@
           "body": "[\n  { \"date\": \"2026-10-20\", \"steps\": 3904, \"activeEnergyKcal\": 813, \"distanceKm\": 2.94, \"lastSynced\": \"2026-10-26T04:32:08.533Z\" },\n  { \"date\": \"2026-10-21\", \"steps\": 6779, \"activeEnergyKcal\": 262, \"distanceKm\": 4.66, \"lastSynced\": \"2026-10-26T04:32:08.533Z\" },\n  { \"date\": \"2026-10-22\", \"steps\": 9968, \"activeEnergyKcal\": 743, \"distanceKm\": 7.31, \"lastSynced\": \"2026-10-26T04:32:08.533Z\" },\n  { \"date\": \"2026-10-23\", \"steps\": 7408, \"activeEnergyKcal\": 875, \"distanceKm\": 5.73, \"lastSynced\": \"2026-10-26T04:32:08.533Z\" },\n  { \"date\": \"2026-10-24\", \"steps\": 8516, \"activeEnergyKcal\": 628, \"distanceKm\": 6.37, \"lastSynced\": \"2026-10-26T04:32:08.533Z\" },\n  { \"date\": \"2026-10-25\", \"steps\": 7861, \"activeEnergyKcal\": 459, \"distanceKm\": 6.17, \"lastSynced\": \"2026-10-26T04:32:08.533Z\" },\n  { \"date\": \"2026-10-26\", \"steps\": 10120, \"activeEnergyKcal\": 257, \"distanceKm\": 8, \"lastSynced\": \"2026-10-26T04:32:08.533Z\" }\n]"
         }
       ]
+    },
+    {
+      "name": "Get daily data - Google Fit-inspired",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/wearable/daily?date=2026-10-26&source=googlefit"
+      },
+      "response": [{
+        "name": "Google Fit-inspired response",
+        "status": "OK",
+        "code": 200,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"source\": \"googlefit\",\n  \"date\": \"2026-10-26\",\n  \"step_count\": 4135,\n  \"calories_expended\": 518,\n  \"distance_meters\": 2750,\n  \"synced_at\": \"2026-10-27T00:58:22.675Z\"\n}"
+      }]
+    },
+    {
+      "name": "Get daily data - Apple Health-inspired",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/wearable/daily?date=2026-10-26&source=applehealth"
+      },
+      "response": [{
+        "name": "Apple Health-inspired response",
+        "status": "OK",
+        "code": 200,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"source\": \"applehealth\",\n  \"date\": \"2026-10-26\",\n  \"stepCount\": 4451,\n  \"activeEnergyBurned\": { \"value\": 502, \"unit\": \"kcal\" },\n  \"distanceWalkingRunning\": { \"value\": 3.04, \"unit\": \"km\" },\n  \"endDate\": \"2026-10-27T00:58:22.864Z\"\n}"
+      }]
+    },
+    {
+      "name": "Get weekly data - Google Fit-inspired",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/wearable/week?source=googlefit"
+      },
+      "response": [{
+        "name": "Google Fit-inspired weekly response",
+        "status": "OK",
+        "code": 200,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "[\n  { \"source\": \"googlefit\", \"date\": \"2026-10-21\", \"step_count\": 4391, \"calories_expended\": 490, \"distance_meters\": 3470, \"synced_at\": \"2026-10-27T00:58:22.869Z\" },\n  { \"source\": \"googlefit\", \"date\": \"2026-10-22\", \"step_count\": 3750, \"calories_expended\": 219, \"distance_meters\": 2780, \"synced_at\": \"2026-10-27T00:58:22.869Z\" },\n  { \"source\": \"googlefit\", \"date\": \"2026-10-23\", \"step_count\": 9171, \"calories_expended\": 652, \"distance_meters\": 6820, \"synced_at\": \"2026-10-27T00:58:22.869Z\" },\n  { \"source\": \"googlefit\", \"date\": \"2026-10-24\", \"step_count\": 10102, \"calories_expended\": 206, \"distance_meters\": 7760, \"synced_at\": \"2026-10-27T00:58:22.869Z\" },\n  { \"source\": \"googlefit\", \"date\": \"2026-10-25\", \"step_count\": 9518, \"calories_expended\": 882, \"distance_meters\": 7380, \"synced_at\": \"2026-10-27T00:58:22.869Z\" },\n  { \"source\": \"googlefit\", \"date\": \"2026-10-26\", \"step_count\": 4135, \"calories_expended\": 518, \"distance_meters\": 2750, \"synced_at\": \"2026-10-27T00:58:22.869Z\" },\n  { \"source\": \"googlefit\", \"date\": \"2026-10-27\", \"step_count\": 6226, \"calories_expended\": 316, \"distance_meters\": 4520, \"synced_at\": \"2026-10-27T00:58:22.869Z\" }\n]"
+      }]
+    },
+    {
+      "name": "Get weekly data - Apple Health-inspired",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/wearable/week?source=applehealth"
+      },
+      "response": [{
+        "name": "Apple Health-inspired weekly response",
+        "status": "OK",
+        "code": 200,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "[\n  { \"source\": \"applehealth\", \"date\": \"2026-10-21\", \"stepCount\": 10459, \"activeEnergyBurned\": { \"value\": 483, \"unit\": \"kcal\" }, \"distanceWalkingRunning\": { \"value\": 8, \"unit\": \"km\" }, \"endDate\": \"2026-10-27T00:58:22.887Z\" },\n  { \"source\": \"applehealth\", \"date\": \"2026-10-22\", \"stepCount\": 11198, \"activeEnergyBurned\": { \"value\": 779, \"unit\": \"kcal\" }, \"distanceWalkingRunning\": { \"value\": 7.39, \"unit\": \"km\" }, \"endDate\": \"2026-10-27T00:58:22.887Z\" },\n  { \"source\": \"applehealth\", \"date\": \"2026-10-23\", \"stepCount\": 10185, \"activeEnergyBurned\": { \"value\": 461, \"unit\": \"kcal\" }, \"distanceWalkingRunning\": { \"value\": 8.07, \"unit\": \"km\" }, \"endDate\": \"2026-10-27T00:58:22.887Z\" },\n  { \"source\": \"applehealth\", \"date\": \"2026-10-24\", \"stepCount\": 9084, \"activeEnergyBurned\": { \"value\": 843, \"unit\": \"kcal\" }, \"distanceWalkingRunning\": { \"value\": 6.69, \"unit\": \"km\" }, \"endDate\": \"2026-10-27T00:58:22.887Z\" },\n  { \"source\": \"applehealth\", \"date\": \"2026-10-25\", \"stepCount\": 5974, \"activeEnergyBurned\": { \"value\": 393, \"unit\": \"kcal\" }, \"distanceWalkingRunning\": { \"value\": 3.97, \"unit\": \"km\" }, \"endDate\": \"2026-10-27T00:58:22.887Z\" },\n  { \"source\": \"applehealth\", \"date\": \"2026-10-26\", \"stepCount\": 4451, \"activeEnergyBurned\": { \"value\": 502, \"unit\": \"kcal\" }, \"distanceWalkingRunning\": { \"value\": 3.04, \"unit\": \"km\" }, \"endDate\": \"2026-10-27T00:58:22.887Z\" },\n  { \"source\": \"applehealth\", \"date\": \"2026-10-27\", \"stepCount\": 4330, \"activeEnergyBurned\": { \"value\": 523, \"unit\": \"kcal\" }, \"distanceWalkingRunning\": { \"value\": 2.83, \"unit\": \"km\" }, \"endDate\": \"2026-10-27T00:58:22.887Z\" }\n]"
+      }]
+    },
+    {
+      "name": "Reject unsupported source",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/wearable/daily?date=2026-10-26&source=unsupported"
+      },
+      "response": [{
+        "name": "Unsupported source error",
+        "status": "Bad Request",
+        "code": 400,
+        "_postman_previewlanguage": "json",
+        "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+        "body": "{\n  \"error\": \"Invalid wearable source. Use \\\"googlefit\\\" or \\\"applehealth\\\".\"\n}"
+      }]
     }
   ],
   "variable": [
