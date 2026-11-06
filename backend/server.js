@@ -21,6 +21,13 @@ const schemaDirectory = resolve(backendDirectory, "../schemas")
 const loadSchema = (filename) => JSON.parse(readFileSync(resolve(schemaDirectory, filename), "utf8"))
 const terminologySchema = loadSchema("terminology.json")
 const terminology = terminologySchema.definitions
+const configuredFrontendOrigins = new Set(
+  (process.env.FRONTEND_URL || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+    .map((origin) => new URL(origin).origin),
+)
 
 function isAllowedOrigin(origin) {
   let url
@@ -29,6 +36,7 @@ function isAllowedOrigin(origin) {
   } catch {
     return false
   }
+  if (configuredFrontendOrigins.has(url.origin)) return true
   if (url.protocol !== "http:" || !["5173", "8443"].includes(url.port)) return false
 
   const hostname = url.hostname.toLowerCase()
