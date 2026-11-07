@@ -16,13 +16,10 @@ python -m pip install -r requirements.txt
 Then open three terminals from the repository root:
 
 ```powershell
-# Terminal 1: policy service (run from policy-service after activating .venv)
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 
-# Terminal 2: Express API
 pnpm --dir backend dev
 
-# Terminal 3: Vite frontend
 pnpm dev
 ```
 
