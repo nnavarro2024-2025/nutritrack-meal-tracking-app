@@ -9,7 +9,6 @@ import {
 } from "../services/notesService"
 import { MealRecord, PatientSummary, fetchPatientMeals, fetchPatientSummary } from "../services/mealService"
 
-type PreviewState = "ready" | "loading" | "empty" | "error"
 type StepIndex = 0 | 1 | 2 | 3 | 4
 type AssessmentRow = {
   id: number
@@ -142,17 +141,6 @@ function FormField({
   )
 }
 
-function PreviewPicker({ value, onChange }: { value: PreviewState; onChange: (value: PreviewState) => void }) {
-  return (
-    <select className="state-picker" value={value} onChange={(event) => onChange(event.target.value as PreviewState)} aria-label="Preview screen state">
-      <option value="ready">Ready state</option>
-      <option value="loading">Loading state</option>
-      <option value="empty">Empty state</option>
-      <option value="error">Error state</option>
-    </select>
-  )
-}
-
 function makeErrorMap(errors: Array<{ path: string; message: string }>): FieldErrors {
   return errors.reduce<FieldErrors>((result, error) => {
     const assessmentDomainMatch = error.path.match(/^\/assessment\/domains\/\d+\/domain$/)
@@ -184,7 +172,6 @@ export default function Charting({
 }) {
   const [terms, setTerms] = useState<NotesTerminology | null>(null)
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading")
-  const [previewState, setPreviewState] = useState<PreviewState>("ready")
   const [step, setStep] = useState<StepIndex>(0)
   const [form, setForm] = useState(() => createInitialForm(patient.id, provider.id))
   const [errors, setErrors] = useState<FieldErrors>({})
@@ -417,11 +404,6 @@ export default function Charting({
     }
   }
 
-  const changePreviewState = (value: PreviewState) => {
-    setPreviewState(value)
-    if (value === "ready" && loadState === "error") void loadTerms()
-  }
-
   const selectedProblemCode = (term: string) => terms?.diagnosisCodeByTerm[term] || ""
   const note = step === 4 ? buildNote() : null
 
@@ -429,7 +411,7 @@ export default function Charting({
     <main className="screen charting-screen" ref={chartingContainer}>
       <header className="page-header">
         <div><span className="eyebrow">PROVIDER WORKSPACE · {provider.name}</span><h1>Clinical charting</h1><p className="charting-for-patient">Patient: {patient.name}</p></div>
-        <div className="charting-header-actions"><button type="button" className="secondary-button" onClick={onBack}>Back to patient</button><PreviewPicker value={previewState} onChange={changePreviewState} /></div>
+        <div className="charting-header-actions"><button type="button" className="secondary-button" onClick={onBack}>Back to patient</button></div>
       </header>
 
       <details className="charting-patient-context" open>
@@ -443,12 +425,10 @@ export default function Charting({
             </div>}
       </details>
 
-      {previewState === "loading" || loadState === "loading" ? (
+      {loadState === "loading" ? (
         <div className="charting-state"><div className="skeleton wide" /><p>Loading clinical terminology…</p></div>
-      ) : previewState === "error" || loadState === "error" ? (
-        <div className="charting-state charting-state-error"><h2>Couldn’t load terminology</h2><p>Check that the backend is running, then try again.</p><button className="secondary-button" onClick={() => { setPreviewState("ready"); void loadTerms() }}>Try again</button></div>
-      ) : previewState === "empty" ? (
-        <div className="charting-state"><div className="status-icon">＋</div><h2>No note started</h2><p>Begin a new patient note to document the Nutrition Care Process.</p><button className="primary-button" onClick={() => setPreviewState("ready")}>Start a note</button></div>
+      ) : loadState === "error" ? (
+        <div className="charting-state charting-state-error"><h2>Couldn’t load terminology</h2><p>Check that the backend is running, then try again.</p><button className="secondary-button" onClick={() => void loadTerms()}>Try again</button></div>
       ) : !terms || !terms.assessmentDomain.length ? (
         <div className="charting-state charting-state-error"><h2>No terminology available</h2><p>The terminology service returned no charting terms.</p><button className="secondary-button" onClick={() => void loadTerms()}>Reload terms</button></div>
       ) : (

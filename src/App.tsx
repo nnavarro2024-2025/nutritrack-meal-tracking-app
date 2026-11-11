@@ -69,17 +69,6 @@ const Icon = ({ name, size = 22 }: { name: string; size?: number }) => {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>
 }
 
-function StatePicker({ value, onChange }: { value: ViewState; onChange: (v: ViewState) => void }) {
-  return (
-    <select className="state-picker" value={value} onChange={(e) => onChange(e.target.value as ViewState)} aria-label="Preview screen state">
-      <option value="ready">Ready state</option>
-      <option value="loading">Loading state</option>
-      <option value="empty">Empty state</option>
-      <option value="error">Error state</option>
-    </select>
-  )
-}
-
 function StatusState({ type, onRetry }: { type: Exclude<ViewState, "ready">; onRetry: () => void }) {
   if (type === "loading") return <div className="skeleton-wrap"><div className="skeleton wide" /><div className="skeleton-grid"><div className="skeleton card" /><div className="skeleton card" /></div></div>
   const isError = type === "error"
@@ -158,16 +147,9 @@ function Dashboard({ goToLog, userName }: { goToLog: () => void; userName: strin
   }
   if (!wearableData) {
     const unavailableState = state === "ready" ? "error" : state
-    const updateState = (nextState: ViewState) => {
-      if (nextState === "ready") {
-        retry()
-      } else {
-        setState(nextState)
-      }
-    }
-    return <Screen title="Today" action={<StatePicker value={state} onChange={updateState} />}><StatusState type={unavailableState} onRetry={retry} /></Screen>
+    return <Screen title="Today"><StatusState type={unavailableState} onRetry={retry} /></Screen>
   }
-  if (state !== "ready") return <Screen title="Today" action={<StatePicker value={state} onChange={setState} />}><StatusState type={state} onRetry={retry} /></Screen>
+  if (state !== "ready") return <Screen title="Today"><StatusState type={state} onRetry={retry} /></Screen>
   const todayMeals = meals.filter((meal) => isToday(meal.loggedAt))
   const totals = todayMeals.reduce((result, meal) => ({
     calories: result.calories + meal.calories,
@@ -177,7 +159,7 @@ function Dashboard({ goToLog, userName }: { goToLog: () => void; userName: strin
   }), { calories: 0, protein: 0, carbs: 0, fat: 0 })
   const calPct = Math.round((totals.calories / todaySummary.calories.goal) * 100)
   return (
-    <Screen title={`Good morning, ${userName.split(" ")[0]}`} eyebrow={new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })} action={<StatePicker value={state} onChange={setState} />}>
+    <Screen title={`Good morning, ${userName.split(" ")[0]}`} eyebrow={new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}>
       <section className="calorie-card">
         <div><span className="section-kicker">TODAY’S ENERGY</span>{mealState === "loading" ? <div className="skeleton wide" /> : mealState === "error" ? <p role="alert">Couldn’t load today’s meals. <button className="inline-retry" onClick={() => setMealRefresh((value) => value + 1)}>Try again</button></p> : <><div className="calorie-number">{totals.calories.toLocaleString()}</div><p>of {todaySummary.calories.goal.toLocaleString()} kcal</p>{mealState === "empty" || todayMeals.length === 0 ? <small>No meals logged today yet.</small> : null}</>}</div>
         <div className="calorie-gauge" style={{ "--pct": `${calPct * 3.6}deg` } as React.CSSProperties}><div><strong>{Math.max(0, todaySummary.calories.goal - totals.calories)}</strong><small>left</small></div></div>
@@ -334,7 +316,6 @@ function mealDisplayTime(meal: MealRecord) {
 }
 
 function History() {
-  const [previewState, setPreviewState] = useState<ViewState>("ready")
   const [dataState, setDataState] = useState<ViewState>("loading")
   const [meals, setMeals] = useState<MealRecord[]>([])
   const [retryKey, setRetryKey] = useState(0)
@@ -351,14 +332,12 @@ function History() {
     })
     return () => { active = false }
   }, [retryKey])
-  const state = previewState === "ready" ? dataState : previewState
   const retry = () => {
-    setPreviewState("ready")
     setRetryKey((key) => key + 1)
   }
   return (
-    <Screen title="Meal history" eyebrow="Your recent meals" action={<StatePicker value={previewState} onChange={setPreviewState} />}>
-      {state !== "ready" ? <StatusState type={state} onRetry={retry} /> : <div className="history-list">
+    <Screen title="Meal history" eyebrow="Your recent meals">
+      {dataState !== "ready" ? <StatusState type={dataState} onRetry={retry} /> : <div className="history-list">
         <div className="history-date"><span>All meals</span><small>{meals.length} meals</small></div>
         {meals.map((meal) => <article className="meal-card" key={meal.id}><MealPhoto meal={meal} /><div className="meal-copy"><div><span className="meal-type">{meal.mealType}</span><small>{mealDisplayTime(meal)}</small></div><h3>{meal.foodName}</h3><p>{meal.portionSize} · {meal.protein}g P · {meal.carbs}g C · {meal.fat}g F</p>{mealPolicyNutrients(meal) && <p>{mealPolicyNutrients(meal)}</p>}{meal.notes && <p>{meal.notes}</p>}</div><strong className="meal-cal">{meal.calories}<small>kcal</small></strong></article>)}
       </div>}
@@ -736,11 +715,9 @@ function MyCarePlan({ patientName }: { patientName: string }) {
 
 function Wearable() {
   const [state, setState] = useState<ViewState>("empty")
-  const [previewState, setPreviewState] = useState<ViewState>("ready")
   const [source, setSource] = useState<WearableSource>(() => getSelectedWearableSource())
   const [dailyData, setDailyData] = useState<WearableDailyData | null>(null)
   const [weeklyData, setWeeklyData] = useState<WearableDailyData[]>([])
-  const displayState = previewState === "ready" ? state : previewState
 
   const syncActivity = async () => {
     setState("loading")
@@ -763,7 +740,6 @@ function Wearable() {
     setDailyData(null)
     setWeeklyData([])
     setState("empty")
-    setPreviewState("ready")
   }
   const totalSteps = weeklyData.reduce((total, day) => total + day.steps, 0)
   const averageSteps = weeklyData.length ? Math.round(totalSteps / weeklyData.length) : 0
@@ -771,8 +747,8 @@ function Wearable() {
     ? Math.round(weeklyData.reduce((total, day) => total + day.activeEnergyKcal, 0) / weeklyData.length)
     : 0
   return (
-    <Screen title="Wearable sync" eyebrow="Activity, all in one place" action={<StatePicker value={previewState} onChange={setPreviewState} />}>
-      <section className={`device-card ${displayState === "ready" ? "connected" : ""}`}>
+    <Screen title="Wearable sync" eyebrow="Activity, all in one place">
+      <section className={`device-card ${state === "ready" ? "connected" : ""}`}>
         <div className="watch-visual"><Icon name="watch" size={34} /></div>
         <div className="wearable-source-controls">
           <div className="field">
@@ -782,23 +758,23 @@ function Wearable() {
               <option value="applehealth">Apple Health</option>
             </select>
           </div>
-          <button className="primary-button" onClick={() => { void syncActivity() }} disabled={displayState === "loading"}>
-            {displayState === "loading" ? "Syncing…" : "Sync activity"}
+          <button className="primary-button" onClick={() => { void syncActivity() }} disabled={state === "loading"}>
+            {state === "loading" ? "Syncing…" : "Sync activity"}
           </button>
         </div>
         <div className="wearable-connection-status" aria-live="polite">
-          {displayState === "ready" && dailyData
+          {state === "ready" && dailyData
             ? <><span className="section-kicker">CONNECTED · {source === "googlefit" ? "GOOGLE FIT" : "APPLE HEALTH"}</span><p>Last synced {new Date(dailyData.lastSynced).toLocaleString()}</p></>
-            : displayState === "loading"
+            : state === "loading"
               ? <><span className="section-kicker">SYNCING</span><div className="skeleton wide" /></>
-              : displayState === "error"
+              : state === "error"
                 ? <StatusState type="error" onRetry={() => { void syncActivity() }} />
-                : displayState === "empty"
+                : state === "empty"
                   ? <><span className="section-kicker">NOT CONNECTED</span><h2>Not synced yet</h2><p>Choose a source and sync to load simulated activity.</p></>
                   : <div className="skeleton wide" />}
         </div>
       </section>
-      {displayState === "ready" && dailyData && <>
+      {state === "ready" && dailyData && <>
         <div className="metric-grid wearable-today-metrics">
           <section className="metric-card"><div className="metric-icon mint"><Icon name="steps" /></div><span>Steps today</span><strong>{dailyData.steps.toLocaleString()}</strong></section>
           <section className="metric-card"><div className="metric-icon peach"><Icon name="flame" /></div><span>Active energy</span><strong>{dailyData.activeEnergyKcal}</strong><small>kcal</small></section>
