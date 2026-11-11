@@ -120,7 +120,6 @@ h1, h2, h3, .logo, .calorie-number, .metric-card strong { font-family: "Manrope"
 .device-card p { color: var(--muted); font-size: 12px; margin-top: 4px; }
 .device-card.connected { border-color: #9acbad; }
 .wearable-simulation-heading { display: flex; align-items: center; gap: 12px; margin: -8px 0 16px; }
-.wearable-simulation-heading p { color: var(--muted); font-size: 12px; }
 .wearable-simulation-tag { flex: 0 0 auto; border-radius: 99px; padding: 7px 10px; background: #e6f4ea; color: var(--green-dark); font-size: 10px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; }
 .wearable-source-controls { display: flex; align-items: end; gap: 10px; }
 .wearable-source-controls .field { flex: 1; }
@@ -333,7 +332,6 @@ h1, h2, h3, .logo, .calorie-number, .metric-card strong { font-family: "Manrope"
   .auth-brand .logo { margin-top: 10px; font-size: 23px; }
   .auth-brand h1 { font-size: clamp(40px,5vw,64px); line-height: 1.05; letter-spacing: -2.8px; margin: 14vh 0 22px; }
   .auth-brand > p { max-width: 480px; color: #c6d8cf; line-height: 1.7; }
-  .auth-quote { margin-top: auto; color: #a9c9b9; font-size: 13px; }
   .mobile-logo { visibility: hidden; }
 }
 

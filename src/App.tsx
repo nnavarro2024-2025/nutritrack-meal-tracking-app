@@ -774,7 +774,6 @@ function Wearable() {
     <Screen title="Wearable sync" eyebrow="Activity, all in one place" action={<StatePicker value={previewState} onChange={setPreviewState} />}>
       <div className="wearable-simulation-heading">
         <span className="wearable-simulation-tag">API simulation</span>
-        <p>Demo activity from NutriTrack’s local mock API; it does not connect to a real Google or Apple account.</p>
       </div>
       <section className={`device-card ${displayState === "ready" ? "connected" : ""}`}>
         <div className="watch-visual"><Icon name="watch" size={34} /></div>
@@ -869,7 +868,7 @@ function Auth({
   }
   return (
     <div className="auth-shell">
-      <section className="auth-brand"><div className="brand-mark"><Icon name="heart" /></div><div className="logo">NutriTrack</div><h1>Healthy habits,<br />made simple.</h1><p>Track meals, understand your energy, and make progress one day at a time.</p><div className="auth-quote">“Small choices add up to lasting change.”</div></section>
+      <section className="auth-brand"><div className="brand-mark"><Icon name="heart" /></div><div className="logo">NutriTrack</div><h1>Healthy habits,<br />made simple.</h1><p>Track meals, understand your energy, and make progress one day at a time.</p></section>
       <section className="auth-panel">
         <div className="mobile-logo"><div className="brand-mark"><Icon name="heart" /></div><div className="logo">NutriTrack</div></div>
         <div className="auth-form-wrap">
