@@ -772,9 +772,6 @@ function Wearable() {
     : 0
   return (
     <Screen title="Wearable sync" eyebrow="Activity, all in one place" action={<StatePicker value={previewState} onChange={setPreviewState} />}>
-      <div className="wearable-simulation-heading">
-        <span className="wearable-simulation-tag">API simulation</span>
-      </div>
       <section className={`device-card ${displayState === "ready" ? "connected" : ""}`}>
         <div className="watch-visual"><Icon name="watch" size={34} /></div>
         <div className="wearable-source-controls">
